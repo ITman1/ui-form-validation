@@ -2,21 +2,108 @@
 
 var app = angular.module('uiFormValidation', ['ngSanitize', 'ui.bootstrap']);
 
-app.directive('uiValidation', function ($parse, $log) {
+app.constant('uiFormValidation.showErrorsModes', {
+  onSubmit: "onSubmit", 
+  onDirtyAndInvalid: "onDirtyAndInvalid", 
+  onInvalid: "onInvalid"
+});
+
+app.constant('uiFormValidation.showErrorsLocations', {
+  after: "after", 
+  append: "append", 
+  explicit: "explicit"
+});
+
+app.constant('uiFormValidation.defaultValidations', [
+  { /* required validation */
+    validationName: "validateRequired",
+    performableValidation: function () {
+      return true;
+    },
+    validate: function (value) {
+      return !(!value);
+    },
+    errorMessage: "Field {{name}} is required."
+  }
+]);
+
+app.provider('uiFormValidation', function ($injector, $compileProvider) {
+	var $this = this;
+  
+  this.errorsTemplate = function(errors) {
+	  return '<alert type="danger">error</alert>';
+	};
+   
+  var showErrorsModes = $injector.get('uiFormValidation.showErrorsModes');
+  this.showErrorsMode = [showErrorsModes.onSubmit, showErrorsModes.onDirtyAndInvalid];
+  
+  var showErrorsLocations = $injector.get('uiFormValidation.showErrorsLocations');
+  this.showErrorsLocation = showErrorsLocations.after;
+  
+  this.addFormValidation = function(validation) {
+    $compileProvider.directive.apply(null, [validation.validationName, function() {
+      return {
+        restrict: 'A',
+        require: ['^uiValidation', 'ngModel'],
+        link: function(scope, element, attrs, controllers) {
+          var uiValidationController = controllers[0];
+          var ngModelController = controllers[1];
+          
+          ngModelController.$parsers.unshift(function(viewValue, scope, element, attrs) {console.log("ssssssssss");
+            if ($this.validate(uiValidationController, ngModelController, validation, scope, element, attrs)) {
+              ngModelController.$setValidity(validation.validationName, true);
+              return viewValue;
+            } else {
+              ngModelController.$setValidity(validation.validationName, false);
+              return undefined;
+            }
+          });
+        }
+      };
+    }]);
+  }
+  
+  this.validate = function (uiValidationController, ngModelController, validation, scope, element, attrs) {
+    var validationContext = {
+      uiValidationController: uiValidationController,
+      ngModelController: ngModelController,
+      validation: validation,
+      scope: scope,
+      attrs: attrs
+    };
+    
+    return validation.validate(ngModelController.$modelValue, validationContext);
+  }
+  
+  function UIFormValidationProvider() {
+    this.showErrorsMode = $this.showErrorsMode;
+    this.showErrorsLocation = $this.showErrorsLocation;
+    this.errorsTemplate = $this.errorsTemplate;
+    this.addFormValidation = $this.addFormValidation;
+    
+    var defaultValidations = $injector.get('uiFormValidation.defaultValidations');
+    angular.forEach(defaultValidations, function (validation, index) {
+      $this.addFormValidation(validation);
+    });
+  }
+  
+	this.$get = [function () {
+	  return new UIFormValidationProvider();
+	}];
+});
+
+app.directive('uiValidation', function ($parse, $log, uiFormValidation) {
   return {
     restrict: 'A',
-    priority: 10001,
     require: ['uiValidation', 'form'],
-    controller: function ($scope) {
-      this.showErrorTypes = {onSubmit: "onSubmit", onDirtyAndInvalid: "onDirtyAndInvalid", onInvalid: "onInvalid"}
+    controller: function ($scope) {console.log("link");
       this.formController = undefined;
       this.formElement = undefined;
-      this.controls = {},
+      this.controls = {};
+	  
       this.controlsErrors = undefined;
-      this.angularValidation = true;
-      this.customValidation = true;
-      this.showErrorType = [this.showErrorTypes.onSubmit, this.showErrorTypes.onDirtyAndInvalid];
-      this.showErrorCustomExpresion = undefined;
+      this.showErrorsMode = uiFormValidation.showErrorsMode;
+      this.showErrorsLocation = uiFormValidation.showErrorsLocation;
       
       var $this = this;
       this.initialize = function (formController, formElement) {
@@ -28,9 +115,7 @@ app.directive('uiValidation', function ($parse, $log) {
     	      var controlWrapper = {};
     	      
         	  controlWrapper.control = control;
-        	  controlWrapper.angularValidation = true;
-        	  controlWrapper.customValidation = true;
-        	  controlWrapper.showErrorType = [$this.showErrorTypes.onSubmit, $this.showErrorTypes.onDirtyAndInvalid];
+        	  controlWrapper.showErrorsType = undefined;
         	  controlWrapper.showErrorCustomExpresion = undefined;
         	  
         	  $this.controls[controlName] = controlWrapper
@@ -76,7 +161,6 @@ app.directive('uiValidation', function ($parse, $log) {
       validationController.initialize(formController, formElement);
           
       formElement.attr("novalidate", true);
-      $log.info(validationController, formController);
     }
   };
 });
@@ -85,10 +169,8 @@ app.directive('angularValidation', function($timeout, $log) {
     return {
       restrict: 'A',
       require: '^uiValidation',
-      link: function (scope, element, attrs, validationController){
-        $timeout(function () {
-          $log.info(angular.toJson(validationController));
-           
+      link: function (scope, element, attrs, validationController){console.warn(2222);
+        $timeout(function () {           
           if (!validationController.isFormOrControlElement(element)) {
             $log.error('Directive angular-validation needs to be on the form or control.');
           }
