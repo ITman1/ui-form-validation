@@ -49,7 +49,7 @@ app.provider('uiFormValidation', function ($injector, $compileProvider) {
           var uiValidationController = controllers[0];
           var ngModelController = controllers[1];
           
-          ngModelController.$parsers.unshift(function(viewValue, scope, element, attrs) {console.log("ssssssssss");
+          ngModelController.$parsers.unshift(function(viewValue, scope, element, attrs) {
             if ($this.validate(uiValidationController, ngModelController, validation, scope, element, attrs)) {
               ngModelController.$setValidity(validation.validationName, true);
               return viewValue;
@@ -96,7 +96,7 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation) {
   return {
     restrict: 'A',
     require: ['uiValidation', 'form'],
-    controller: function ($scope) {console.log("link");
+    controller: function ($scope) {
       this.formController = undefined;
       this.formElement = undefined;
       this.controls = {};
@@ -106,7 +106,7 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation) {
       this.showErrorsLocation = uiFormValidation.showErrorsLocation;
       
       var $this = this;
-      this.initialize = function (formController, formElement) {
+      this.initialize = function (formController, formElement) {     
         $this.formController = formController;
         $this.formElement = formElement;
         
@@ -114,7 +114,11 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation) {
     	    if (control && control.hasOwnProperty('$modelValue')) {
     	      var controlWrapper = {};
     	      
+            var controlElement   = formElement[0].querySelector('[name="' + controlName + '"]');
+            controlElement = angular.element(controlElement);
+            
         	  controlWrapper.control = control;
+            controlWrapper.controlElement = controlElement;
         	  controlWrapper.showErrorsType = undefined;
         	  controlWrapper.showErrorCustomExpresion = undefined;
         	  
@@ -124,13 +128,15 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation) {
       }
       
       this.isFormOrControlElement = function (element) {
-        if ($this.formElement === element) {
+        
+        
+        if ($this.formElement[0] === element[0]) {
           return true;
         }
         
         var result = false;
         angular.forEach($this.controls, function (controlWrapper, controlName) {
-          if (!result && controlWrapper.control === element) {
+          if (!result && controlWrapper.controlElement[0] === element[0]) {
             result = true;
           } 
         });
@@ -139,13 +145,13 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation) {
       }
       
       this.getFormOrControlWrapper = function (element) {
-        if ($this.formElement === element) {
+        if ($this.formElement[0] === element[0]) {
           return $this;
         }
         
         var result = undefined;
         angular.forEach($this.controls, function (controlWrapper, controlName) {
-          if (!result && controlWrapper.control === element) {
+          if (!result && controlWrapper.controlElement[0] === element[0]) {
             result = controlWrapper;
           } 
         });
@@ -169,13 +175,14 @@ app.directive('angularValidation', function($timeout, $log) {
     return {
       restrict: 'A',
       require: '^uiValidation',
-      link: function (scope, element, attrs, validationController){console.warn(2222);
-        $timeout(function () {           
+      link: function (scope, element, attrs, validationController){
+        $timeout(function () {
           if (!validationController.isFormOrControlElement(element)) {
             $log.error('Directive angular-validation needs to be on the form or control.');
           }
           	
           var wrapper = validationController.getFormOrControlWrapper(element);
+          $log.info(wrapper);
         });
       }
     }
