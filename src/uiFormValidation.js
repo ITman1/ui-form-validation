@@ -175,6 +175,7 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation, $injecto
       });
     
       this.initialized = false;
+      this.isSubmited = false;
       this.initializationCallbacks = [];
     
       this.formController = undefined;
@@ -244,6 +245,30 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation, $injecto
         return this.getShowErrorsProperty(controlName, 'showErrorsLocation');
       }
       
+      this.shouldDisplayShowErrors = function (controlName) {
+        var showErrorsMode = this.getShowErrorsMode(controlName);
+        var controlWrapper = this.controls[controlName];
+        var controlNgModelController = this.formController[controlName];
+        
+        var onSubmit = false;
+        var onDirtyAndInvalid = false;
+        var onInvalid = false;
+        
+        if (showErrorsMode.indexOf(showErrorsModes.onSubmit)) {
+          onSubmit = this.isSubmited; 
+        }
+        
+        if (showErrorsMode.indexOf(showErrorsModes.onDirtyAndInvalid)) {
+          onDirtyAndInvalid = controlNgModelController.$dirty && controlNgModelController.$invalid; 
+        }
+        
+        if (showErrorsMode.indexOf(showErrorsModes.onDirtyAndInvalid)) {
+          onInvalid = controlNgModelController.$invalid; 
+        }
+
+        return onSubmit || onDirtyAndInvalid || onInvalid;
+      }
+      
       this.getParsedShowErrorsLocation = function (controlName) {
         var showErrorsLocation = this.getShowErrorsLocation(controlName);
         var parsedShowErrorsLocation = {name: "", args: []};
@@ -293,33 +318,41 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation, $injecto
           
           angular.forEach(showErrorsLocationFactories, function (showErrorsLocationFactory, key) {
             if (showErrorsLocationFactory.name == parsedShowErrorsLocation.name) {
-              var link = null;
+
               if (showErrorsLocationFactory.compile) {
                 if (typeof showErrorsLocationFactory.compile != 'function') {
                   throw "Validation attribute compile is not function.";
                 }
                 
                 showErrorsLocationFactory.compile(showErrorsTemplate, parsedShowErrorsLocation.args);
-              } else {
-                $compile(showErrorsElement);
               }
               
-              if (showErrorsLocationFactory.link) {
-                if (typeof showErrorsLocationFactory.link != 'function') {
-                  throw "Validation attribute link is not function.";
+              var link = $compile(showErrorsElement);
+              
+              link(scope, function(clonedShowErrorsElement) {
+                if (showErrorsLocationFactory.link) {
+                  if (typeof showErrorsLocationFactory.link != 'function') {
+                    throw "Validation attribute link is not function.";
+                  }
+                  
+                  showErrorsLocationFactory.link(scope, clonedShowErrorsElement, controlWrapper, parsedShowErrorsLocation.args);
                 }
-                
-                showErrorsLocationFactory.link(scope, showErrorsElement, controlWrapper, parsedShowErrorsLocation.args);
-              }
-              
-              $log.warn("Yop", showErrorsLocationFactory);
+              });
             }
           });
-          
-            /*controlWrapper.controlElement.append(showErrorsElement);
-            $compile(showErrorsElement)(scope);*/
-          
-          $log.info(showErrorsTemplate, showErrorsLocation, parsedShowErrorsLocation, showErrorsMode, showErrorsElement);
+        });
+      }
+      
+      this.installShowErrorsWatchers = function (scope) {
+        angular.forEach($this.controls, function (controlWrapper, controlName) {
+          scope.$watch(function () {
+              return $this.shouldDisplayShowErrors(controlName);
+            }, function(condition){
+              console.warn(controlWrapper, condition);
+              //var hasErrors = scope.$eval(conditionsString);
+              controlWrapper.controlElement.toggleClass('hidden', condition);
+            }
+          );
         });
       }
     },
@@ -332,7 +365,7 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation, $injecto
 
       validationController.initialize(formController, formElement);
       validationController.injectShowErrors(scope);
-      
+      validationController.installShowErrorsWatchers(scope);
           
       $log.info("uiValidation");
     }
