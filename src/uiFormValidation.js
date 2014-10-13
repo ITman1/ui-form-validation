@@ -2,26 +2,37 @@
 
 var app = angular.module('uiFormValidation', ['ngSanitize', 'ui.bootstrap']);
 
-// TODO: Convert on factory & strategy pattern just like uiFormValidation.showErrorsLocationFactories...
-app.constant('uiFormValidation.showErrorsModes', {
-  onSubmit: "onSubmit", 
+// TODO: Convert on factory & strategy pattern just like uiFormValidation.validationErrorsLocationFactories...
+app.constant('uiFormValidation.validationErrorsModes', {
+  onSubmitAndInvalid: "onSubmitAndInvalid", 
   onDirtyAndInvalid: "onDirtyAndInvalid", 
   onInvalid: "onInvalid"
 });
 
-app.factory('uiFormValidation.showErrorsLocation.after', function () {
+app.factory('uiFormValidation.validationErrorsLocation.after', function ($injector) {
   return {
     name: "after",
-    link: function (scope, showErrorsElement, controlElement, args) {
-    
+    link: function (scope, validationErrorsElement, controlWrapper, args) {
+      var utilsService = $injector.get('uiFormValidation.utilsService');
+      var insertElement = controlWrapper.controlElement;
+      
+      if (args.length > 0) {
+        var argElement = utilsService.selectFromScope(insertElement, args[0]);
+        
+        if (argElement) {
+          insertElement = argElement;
+        }
+      }
+      
+      validationErrorsElement.insertAfter(insertElement);
     }
   };
 });
 
-app.factory('uiFormValidation.showErrorsLocation.append', function ($parse, $injector) {
+app.factory('uiFormValidation.validationErrorsLocation.append', function ($injector) {
   return {
     name: "append",
-    link: function (scope, showErrorsElement, controlWrapper, args) {      
+    link: function (scope, validationErrorsElement, controlWrapper, args) {      
       var utilsService = $injector.get('uiFormValidation.utilsService');
       var appendElement = controlWrapper.controlElement;
       
@@ -33,26 +44,28 @@ app.factory('uiFormValidation.showErrorsLocation.append', function ($parse, $inj
         }
       }
       
-      appendElement.append(showErrorsElement)
+      appendElement.append(validationErrorsElement)
     }
   };
 });
 
-app.factory('uiFormValidation.showErrorsLocation.explicit', function () {
+app.factory('uiFormValidation.validationErrorsLocation.explicit', function () {
   return {
     name: "explicit",
-    link: function () {}
+    compile: function () { 
+      return function () {}
+    },
   };
 });
 
-app.value('uiFormValidation.showErrorsLocationFactories', {
-  after: 'uiFormValidation.showErrorsLocation.after', 
-  append: 'uiFormValidation.showErrorsLocation.append', 
-  explicit: 'uiFormValidation.showErrorsLocation.explicit'
+app.value('uiFormValidation.validationErrorsLocationFactories', {
+  after: 'uiFormValidation.validationErrorsLocation.after', 
+  append: 'uiFormValidation.validationErrorsLocation.append', 
+  explicit: 'uiFormValidation.validationErrorsLocation.explicit'
 });
 
-app.constant('uiFormValidation.supportedValidations', [
-  { /* required validation */
+app.constant('uiFormValidation.supportedValidations', {
+  'validateRequired' : { /* required validation */
     validationName: "validateRequired",
     performableValidation: function () {
       return true;
@@ -60,28 +73,49 @@ app.constant('uiFormValidation.supportedValidations', [
     validate: function (value) {
       return !(!value);
     },
-    errorMessage: "Field {{name}} is required."
+    errorMessage: function (value, scope, control, validationController) {
+      return "Field is required.";
+    }
+  },
+  'validateAdhoc' : {
+    validationName: "validateAdhoc",
+    performableValidation: function () {
+      return true;
+    },
+    validate: function (value, validationContext) {
+      var adhocPath = validationContext.element.attr("validate-adhoc");
+      var error = validationContext.scope.$eval(adhocPath);
+      return !error;
+    },
+    errorMessage: function (value, scope, control, validationController) {
+      var adhocPath = control.controlElement.attr("validate-adhoc");
+      var error = scope.$eval(adhocPath);
+      return error;
+    }
   }
-]);
+});
 
 app.service('uiFormValidation.utilsService', function ($injector) {
-  this.showErrorsControllers = {};
-  this.validationControllers = {};
+  var $this = this;
   
-  this.addShowErrorsController = function (scope, validationControllerName, showErrorsController) {
-    if (!this.showErrorsControllers[scope]) {
-      this.showErrorsControllers[scope] = {};
+  this.validationErrorsControllers = {};
+  this.validationControllers = {};
+  this.validationControllerInitializationCallbacks = {};
+  
+  this.addValidationErrorsController = function (scope, validationControllerName, validationErrorsController) {
+    if (!this.validationErrorsControllers[scope]) {
+      this.validationErrorsControllers[scope] = {};
       
       scope.$on('$destroy', function () {
-        this.showErrorsControllers[scope] = undefined;
+        $this.validationErrorsControllers[scope] = undefined;
       });
     }
   
-    if (!this.showErrorsControllers[scope][validationControllerName]) {
-      this.showErrorsControllers[scope][validationControllerName] = [];
+    if (!this.validationErrorsControllers[scope][validationControllerName]) {
+      this.validationErrorsControllers[scope][validationControllerName] = [];
     }
     
-    this.showErrorsControllers[scope][validationControllerName].push(showErrorsController);
+    this.validationErrorsControllers[scope][validationControllerName].push(validationErrorsController);
   }
   
   this.addValidationController = function (scope, validationController) {
@@ -89,21 +123,27 @@ app.service('uiFormValidation.utilsService', function ($injector) {
       this.validationControllers[scope] = [];
       
       scope.$on('$destroy', function () {
-        this.validationControllers[scope] = undefined;
+        $this.validationControllers[scope] = undefined;
       });
     }
     
     this.validationControllers[scope][validationController.controllerName] = validationController;
-    
 
+    if (this.validationControllerInitializationCallbacks[scope] && this.validationControllerInitializationCallbacks[scope][validationController.controllerName]) {
+      angular.forEach(this.validationControllerInitializationCallbacks[scope][validationController.controllerName], function (callback, key) {
+        validationController.afterInitialized(callback);
+      });
+    
+      this.validationControllerInitializationCallbacks[scope][validationController.controllerName] = undefined;
+    }
   }
     
-  this.getShowErrorsLocationFactories = function () {
-    return $injector.get('uiFormValidation.showErrorsLocationFactories');
+  this.getValidationErrorsLocationFactories = function () {
+    return $injector.get('uiFormValidation.validationErrorsLocationFactories');
   }
   
-  this.getShowErrorsModes = function () {
-    return $injector.get('uiFormValidation.showErrorsModes');
+  this.getValidationErrorsModes = function () {
+    return $injector.get('uiFormValidation.validationErrorsModes');
   }
     
   this.selectFromScope = function (scope, selector) {   
@@ -115,25 +155,69 @@ app.service('uiFormValidation.utilsService', function ($injector) {
     
     return scope;
   }
+  
+  this.afterValidationErrorsControllerInitialized = function (scope, validationControllerName, callback) {
+    if (this.validationControllers[scope] && this.validationControllers[scope][validationControllerName]) {
+      this.validationControllers[scope][validationControllerName].afterInitialized(callback);
+    } else {
+      if (!this.validationControllerInitializationCallbacks[scope]) {
+        this.validationControllerInitializationCallbacks[scope] = {};
+        
+        scope.$on('$destroy', function () {
+          $this.validationControllerInitializationCallbacks[scope] = undefined;
+        });
+      }
+    
+      if (!this.validationControllerInitializationCallbacks[scope][validationControllerName]) {
+        this.validationControllerInitializationCallbacks[scope][validationControllerName] = [];
+      }
+      
+      this.validationControllerInitializationCallbacks[scope][validationControllerName].push(callback);
+    }
+  }
+  
+  this.parseControlErrorsSelectors = function (controlErrorsSelectorsString) {
+    var controlErrorsSelectors = {};
+    
+    angular.forEach(controlErrorsSelectorsString.split("\\s+"), function (controlAndError, key) {
+      var parseRegexp = /^\s*(.*?)\s*(\[\s*(.*?)\s*\])?$/;
+      var match = parseRegexp.exec(controlAndError);
+      if (match != null && match.length == 4) {
+        var controlName = match[1];
+        controlErrorsSelectors[controlName] = {};
+        controlErrorsSelectors[controlName].controlName = controlName;
+        controlErrorsSelectors[controlName].errors = match[3]? match[3].split(",") : undefined;
+        if (controlErrorsSelectors[controlName].errors) {
+          controlErrorsSelectors[controlName].errors = controlErrorsSelectors[controlName].errors.map(function (errorName) {
+            return errorName.trim();
+          });
+        }
+      } else {
+          throw "Unable to parse input-errors controls."
+      }
+    });
+    
+    return controlErrorsSelectors;
+  }
 });
 
 app.provider('uiFormValidation', function ($injector, $compileProvider) {
-	var $this = this;
+  var $this = this;
   
   this.formValidations = {};
   
-  this.showErrorsTemplate = function() {
-	  return '<div class="alert alert-error"><div ng-init="getErrors()"></div><div ng-repeat="controlErrors in errors">11</div></div>';
-	};
+  this.validationErrorsTemplate = function() {
+    return '<div class="alert alert-error"><div ng-repeat="controlErrors in errors"><div class="row" ng-repeat="controlError in controlErrors.errors"><span ng-bind-html="controlError"</span></div></div></div>';
+  };
   
-  this.defaultErrorMessage = function(errorName, control) {
-	  return 'Validation "' + errorName + '" has failed.';
-	};
+  this.defaultErrorMessage = function(errorName, scope, control, validationController) {
+    return 'Validation "' + errorName + '" has failed.';
+  };
    
-  var showErrorsModes = $injector.get('uiFormValidation.showErrorsModes');
-  this.showErrorsMode = [showErrorsModes.onSubmit, showErrorsModes.onDirtyAndInvalid];
+  var validationErrorsModes = $injector.get('uiFormValidation.validationErrorsModes');
+  this.validationErrorsMode = [validationErrorsModes.onSubmitAndInvalid, validationErrorsModes.onDirtyAndInvalid];
   
-  this.showErrorsLocation = "after[this]";
+  this.validationErrorsLocation = "after[this]";
   
   this.addFormValidation = function(validation) {
     this.formValidations[validation.validationName] = validation;
@@ -146,6 +230,10 @@ app.provider('uiFormValidation', function ($injector, $compileProvider) {
           var uiValidationController = controllers[0];
           var ngModelController = controllers[1];
           
+          if (validation.performableValidation && typeof validation.performableValidation == "function") {
+            //TODO: performableValidation(element)
+          }
+
           /* For AngularJS 1.2.x - uses parsers pipeline */
           if (!ngModelController.$validators) {
             var value = ngModelController.$modelValue || ngModelController.$viewValue;
@@ -157,7 +245,7 @@ app.provider('uiFormValidation', function ($injector, $compileProvider) {
               ngModelController.$setValidity(validation.validationName, false);
             }
             
-            ngModelController.$parsers.unshift(function(value, scope, element, attrs) {
+            ngModelController.$parsers.unshift(function(value) {
               var validationResult = $this.validate(value, uiValidationController, ngModelController, validation, scope, element, attrs);
               if (validationResult) {
                 ngModelController.$setValidity(validation.validationName, true);
@@ -186,31 +274,33 @@ app.provider('uiFormValidation', function ($injector, $compileProvider) {
       ngModelController: ngModelController,
       validation: validation,
       scope: scope,
-      attrs: attrs
+      attrs: attrs,
+      element: element
     };
     
     return validation.validate(value, validationContext);
   }
   
+  this.supportedValidations = $injector.get('uiFormValidation.supportedValidations');
+  
   function UIFormValidationProvider() {
-    this.showErrorsMode = $this.showErrorsMode;
-    this.showErrorsLocation = $this.showErrorsLocation;
-    this.showErrorsTemplate = $this.showErrorsTemplate;
+    this.customValidations = [];
+  
+    this.validationErrorsMode = $this.validationErrorsMode;
+    this.validationErrorsLocation = $this.validationErrorsLocation;
+    this.validationErrorsTemplate = $this.validationErrorsTemplate;
     
     this.formValidations = $this.formValidations;
     this.defaultErrorMessage = $this.defaultErrorMessage;
-    
-    this.addFormValidation = $this.addFormValidation;
-    
-    var supportedValidations = $injector.get('uiFormValidation.supportedValidations');
-    angular.forEach(supportedValidations, function (validation, index) {
+
+    angular.forEach($this.supportedValidations, function (validation, index) {
       $this.addFormValidation(validation);
     });
   }
   
-	this.$get = [function () {
-	  return new UIFormValidationProvider();
-	}];
+  this.$get = [function () {
+    return new UIFormValidationProvider();
+  }];
 });
 
 app.directive('uiValidation', function ($parse, $log, uiFormValidation, $injector, $compile) {
@@ -218,17 +308,17 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation, $injecto
   return {
     restrict: 'A',
     require: ['uiValidation', 'form'],
-    controller: function ($scope, $injector) {
+    controller: function ($scope, $injector, $element) {
       var utilsService = $injector.get('uiFormValidation.utilsService');
-      var showErrorsModes = utilsService.getShowErrorsModes();
-      var showErrorsLocationFactoriesNames = utilsService.getShowErrorsLocationFactories();
-      var showErrorsLocationFactories = [];
+      var validationErrorsModes = utilsService.getValidationErrorsModes();
+      var validationErrorsLocationFactoriesNames = utilsService.getValidationErrorsLocationFactories();
+      var validationErrorsLocationFactories = [];
       
-      angular.forEach(showErrorsLocationFactoriesNames, function (factoryName, key) {
-        showErrorsLocationFactories.push($injector.get(factoryName));
+      angular.forEach(validationErrorsLocationFactoriesNames, function (factoryName, key) {
+        validationErrorsLocationFactories.push($injector.get(factoryName));
       });
     
-      this.controllerName = "uiValidation_" + uniqueId++;
+      this.controllerName = $element.attr("name") || "uiValidation_" + uniqueId++;
       this.initialized = false;
       this.isSubmited = false;
       this.initializationCallbacks = [];
@@ -236,11 +326,11 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation, $injecto
       this.formController = undefined;
       this.formElement = undefined;
       this.controls = {};
-	  
+    
       //this.controlsErrors = undefined;
-      this.showErrorsMode = uiFormValidation.showErrorsMode;
-      this.showErrorsLocation = uiFormValidation.showErrorsLocation;
-      this.showErrorsTemplate = uiFormValidation.showErrorsTemplate;
+      this.validationErrorsMode = uiFormValidation.validationErrorsMode;
+      this.validationErrorsLocation = uiFormValidation.validationErrorsLocation;
+      this.validationErrorsTemplate = uiFormValidation.validationErrorsTemplate;
       
       var $this = this;
       this.initialize = function (formController, formElement) {   
@@ -249,34 +339,38 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation, $injecto
         $this.formElement = formElement;
         
         angular.forEach(formController, function (control, controlName) {
-    	    if (control && control.hasOwnProperty('$modelValue')) {
-    	      var controlWrapper = {};
-    	      
+          if (control && control.hasOwnProperty('$modelValue')) {
+            var controlWrapper = {};
+            
             var controlElement   = formElement[0].querySelector('[name="' + controlName + '"]');
             controlElement = angular.element(controlElement);
             
-        	  controlWrapper.control = control;
+            controlWrapper.control = control;
             controlWrapper.controlElement = controlElement;
-        	  controlWrapper.showErrorsMode = undefined;
-        	  controlWrapper.showErrorsLocation = undefined;
-            controlWrapper.showErrorsTemplate = undefined;
-        	  
-        	  $this.controls[controlName] = controlWrapper
-    	    }
-  	    });
+            controlWrapper.validationErrorsMode = undefined;
+            controlWrapper.validationErrorsLocation = undefined;
+            controlWrapper.validationErrorsTemplate = undefined;
+            
+            $this.controls[controlName] = controlWrapper
+          }
+        });
         
         $this.initialized = true;
         
         angular.forEach($this.initializationCallbacks, function (fn, index) {
           fn();
-  	    });
+        });
       }
       
       this.afterInitialized = function (fn) {
-        $this.initializationCallbacks.push(fn);
+        if (this.initialized) {
+          fn();
+        } else {
+          this.initializationCallbacks.push(fn);
+        }
       }
       
-      this.getShowErrorsProperty = function (controlName, property) {
+      this.getValidationErrorsProperty = function (controlName, property) {
         if (!$this.controls[controlName]) {
           throw "Control with given name " + controlName + " does not exist.";
         }
@@ -289,57 +383,109 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation, $injecto
         }
       }
       
-      this.getShowErrorsMode = function (controlName) {
-        return this.getShowErrorsProperty(controlName, 'showErrorsMode');
+      this.getValidationErrorsMode = function (controlName) {
+        return this.getValidationErrorsProperty(controlName, 'validationErrorsMode');
       }
       
-      this.getShowErrorsTemplate = function (controlName) {
-        return this.getShowErrorsProperty(controlName, 'showErrorsTemplate');
+      this.getValidationErrorsTemplate = function (controlName) {
+        return this.getValidationErrorsProperty(controlName, 'validationErrorsTemplate');
       }
       
-      this.getShowErrorsLocation = function (controlName) {
-        return this.getShowErrorsProperty(controlName, 'showErrorsLocation');
+      this.getValidationErrorsLocation = function (controlName) {
+        return this.getValidationErrorsProperty(controlName, 'validationErrorsLocation');
       }
       
-      this.shouldDisplayShowErrors = function (controlName) {
-        var showErrorsMode = this.getShowErrorsMode(controlName);
-        var controlWrapper = this.controls[controlName];
-        var controlNgModelController = this.formController[controlName];
+      this.hasControlErrors = function (controlAndErrorSelector) {
+        var selectorControlName = controlAndErrorSelector.controlName;
+        var selectorErrorNames = controlAndErrorSelector.errors;
+        var controlWrapper = this.controls[selectorControlName];
+
+        if (!controlWrapper) {
+          throw "Control with name '" + selectorControlName + "' does not exist.";
+        }
         
-        var onSubmit = false;
+        var isInvalid = false;
+        
+        if (!selectorErrorNames) {
+          isInvalid = controlWrapper.control.$invalid;
+        } else {
+          angular.forEach(selectorErrorNames, function(errorName, key) {
+            if (controlWrapper.control.$error[errorName]) {
+              isInvalid = true;
+            } 
+          });
+        }
+        
+        return isInvalid;
+      }
+      
+      this.hasControlsErrors = function (controlAndErrorSelectors) {
+        var hasErrors = false;
+        
+        angular.forEach(controlAndErrorSelectors, function(controlAndErrorSelector, key) {
+          if ($this.hasControlErrors(controlAndErrorSelector)) {
+            hasErrors = true;
+          }
+        });
+        
+        return hasErrors;
+      }
+      
+      this.shouldDisplayValidationErrorsForControlSelector = function (controlAndErrorSelector) {
+        var selectorControlName = controlAndErrorSelector.controlName;
+        var validationErrorsMode = this.getValidationErrorsMode(selectorControlName);
+        var controlWrapper = this.controls[selectorControlName];
+        var isInvalid = this.hasControlErrors(controlAndErrorSelector);
+        
+        if (!controlWrapper) {
+          throw "Control with name '" + selectorControlName + "' does not exist.";
+        }
+        
+        var onSubmitAndInvalid = false;
         var onDirtyAndInvalid = false;
         var onInvalid = false;
         
-        if (showErrorsMode.indexOf(showErrorsModes.onSubmit)) {
-          onSubmit = this.isSubmited; 
+        if (validationErrorsMode.indexOf(validationErrorsModes.onSubmitAndInvalid) != -1) {
+          onSubmitAndInvalid = this.isSubmited && isInvalid;
         }
         
-        if (showErrorsMode.indexOf(showErrorsModes.onDirtyAndInvalid)) {
-          onDirtyAndInvalid = controlNgModelController.$dirty && controlNgModelController.$invalid; 
+        if (validationErrorsMode.indexOf(validationErrorsModes.onDirtyAndInvalid) != -1) {
+          onDirtyAndInvalid = controlWrapper.control.$dirty && isInvalid;
         }
         
-        if (showErrorsMode.indexOf(showErrorsModes.onDirtyAndInvalid)) {
-          onInvalid = controlNgModelController.$invalid; 
+        if (validationErrorsMode.indexOf(validationErrorsModes.onInvalid) != -1) {
+          onInvalid = isInvalid;
         }
 
-        return onSubmit || onDirtyAndInvalid || onInvalid;
+        return (onSubmitAndInvalid || onDirtyAndInvalid || onInvalid);
       }
       
-      this.getParsedShowErrorsLocation = function (controlName) {
-        var showErrorsLocation = this.getShowErrorsLocation(controlName);
-        var parsedShowErrorsLocation = {name: "", args: []};
+      this.shouldDisplayValidationErrorsForControlSelectors = function (controlsAndErrorSelectors) {
+        var hasErrors = false;
         
-        var parseRegexp = /(.*?)\[(.*?)\]/;
-        var match = parseRegexp.exec(showErrorsLocation);
-        if (match != null && match.length == 3) {
-            parsedShowErrorsLocation.name = match[1].trim();
-            parsedShowErrorsLocation.args = match[2].split(",");
+        angular.forEach(controlsAndErrorSelectors, function(controlAndErrorSelector, key) {
+          if ($this.shouldDisplayValidationErrorsForControlSelector(controlAndErrorSelector)) {
+            hasErrors = true;
+          }
+        });
+        
+        return hasErrors;
+      }
+      
+      this.getParsedValidationErrorsLocation = function (controlName) {
+        var validationErrorsLocation = this.getValidationErrorsLocation(controlName);
+        var parsedValidationErrorsLocation = {name: "", args: []};
+        
+        var parseRegexp = /^\s*(.*?)\s*(\[\s*(.*?)\s*\])?$/;
+        var match = parseRegexp.exec(validationErrorsLocation);
+        if (match != null && match.length == 4) {
+            parsedValidationErrorsLocation.name = match[1].trim();
+            parsedValidationErrorsLocation.args = match[3]? match[3].split(",") : [];
         } else {
-        console.log(showErrorsLocation);
-          throw "Unable to parse show errors location";
+            throw "Unable to parse validation errors location - '" + validationErrorsLocation + "'.";
         }
         
-        return parsedShowErrorsLocation;
+        return parsedValidationErrorsLocation;
       }
       
       this.getFormOrControlWrapper = function (element) {
@@ -357,87 +503,69 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation, $injecto
         return result;
       }
       
-      this.injectShowErrors = function (scope) {
+      this.injectValidationErrors = function () {
         angular.forEach($this.controls, function (controlWrapper, controlName) {
-          var showErrorsLocation = $this.getShowErrorsLocation(controlName);
-          var showErrorsMode = $this.getShowErrorsMode(controlName);
+          var validationErrorsLocation = $this.getValidationErrorsLocation(controlName);
+          var validationErrorsMode = $this.getValidationErrorsMode(controlName);
 
-          var showErrorsElement = angular.element("<div></div>");
-          showErrorsElement.attr('show-errors', controlName);
-          showErrorsElement.attr('validation-controller', $this.controllerName);   
+          var validationErrorsElement = angular.element("<div></div>");
+          validationErrorsElement.attr('validation-errors', controlName);
+          validationErrorsElement.attr('validation-controller', $this.controllerName);   
           
-          var parsedShowErrorsLocation = $this.getParsedShowErrorsLocation(controlName);
+          var parsedValidationErrorsLocation = $this.getParsedValidationErrorsLocation(controlName);
           
-          angular.forEach(showErrorsLocationFactories, function (showErrorsLocationFactory, key) {
-            if (showErrorsLocationFactory.name == parsedShowErrorsLocation.name) {
-            
-              if (showErrorsLocationFactory.compile) {
-                if (typeof showErrorsLocationFactory.compile != 'function') {
+          angular.forEach(validationErrorsLocationFactories, function (validationErrorsLocationFactory, key) {
+            if (validationErrorsLocationFactory.name == parsedValidationErrorsLocation.name) {
+              var link = null;
+              if (validationErrorsLocationFactory.compile) {
+                if (typeof validationErrorsLocationFactory.compile != 'function') {
                   throw "Validation attribute compile is not function.";
                 }
                 
-                showErrorsLocationFactory.compile(showErrorsElement, parsedShowErrorsLocation.args);
+                link = validationErrorsLocationFactory.compile(validationErrorsElement, parsedValidationErrorsLocation.args);
+              } else {
+                link = $compile(validationErrorsElement);
               }
-
-              var link = $compile(showErrorsElement);
               
-              link(scope, function(clonedShowErrorsElement) {
-                if (showErrorsLocationFactory.link) {
-                  if (typeof showErrorsLocationFactory.link != 'function') {
+              link($scope, function(clonedValidationErrorsElement) {
+                if (validationErrorsLocationFactory.link) {
+                  if (typeof validationErrorsLocationFactory.link != 'function') {
                     throw "Validation attribute link is not function.";
                   }
                   
-                  showErrorsLocationFactory.link(scope, clonedShowErrorsElement, controlWrapper, parsedShowErrorsLocation.args);
+                  validationErrorsLocationFactory.link($scope, clonedValidationErrorsElement, controlWrapper, parsedValidationErrorsLocation.args);
                 }
               });
             }
           });
         });
       }
-      
-      this.installShowErrorsWatchers = function (scope) {
-        angular.forEach($this.controls, function (controlWrapper, controlName) {
-          scope.$watch(function () {
-              return $this.shouldDisplayShowErrors(controlName);
-            }, function(isValid){
-              var showErrorsController = utilsService.showErrorsControllers[scope][$this.controllerName];
-
-              angular.forEach(showErrorsController, function (validationShowErrorsController, key) {
-                if (validationShowErrorsController.hasControlName(controlName)) {
-                  validationShowErrorsController.showErrorsElement.toggleClass('hidden', !isValid);
-                }
-              });
-            }
-          );
+            
+      this.bindSubmitEvent = function () {
+        this.formElement.bind('submit', function (event) {
+          $scope.$apply(function () {
+            $this.submit();
+          });
         });
       }
       
-      this.getErrors = function (showErrorsController) {
-        var errors = {};
-        angular.forEach(this.controls, function (controlWrapper, controlName) {
-          if (showErrorsController.hasControlName(controlName)) {
-            var controlErrors = {};
-            controlErrors.control = controlWrapper.control;
-            controlErrors.controlElement = controlErrors.controlElement;
-            controlErrors.errors = {};
-            
-            if (controlWrapper.control && controlWrapper.control.$error) {
-              angular.forEach(controlWrapper.control.$error, function (error, errorName) {
-                var formValidation = uiFormValidation.formValidations[errorName];
-
-                if (error && formValidation) {
-                  controlErrors.errors[errorName] = formValidation.errorMessage;
-                } else if (error) {
-                  controlErrors.errors[errorName] = uiFormValidation.defaultErrorMessage(errorName, controlWrapper.control);
-                }
-              });
-            }
-            
-            errors[controlName] = controlErrors;
-          }
+      this.validate = function () {
+        angular.forEach(this.controls, function(controlWrapper, controlName) {
+          var viewValue = controlWrapper.control.$viewValue;
+          controlWrapper.control.$setViewValue(viewValue);
         });
+      }
+      
+      this.submit = function () {
+        var ngSubmit = this.formElement.attr("ng-submit");
         
-        return errors;
+        if (ngSubmit) {
+          this.isSubmited = true;
+          $scope.$eval(ngSubmit);
+          $log.info("submited");
+        } else {
+          $log.info("not-submited");
+        }
       }
     },
     controllerAs: 'uiValidationController',
@@ -448,8 +576,8 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation, $injecto
       formElement.prop("novalidate", true);
 
       validationController.initialize(formController, formElement);
-      validationController.injectShowErrors(scope);
-      validationController.installShowErrorsWatchers(scope);
+      validationController.injectValidationErrors();
+      validationController.bindSubmitEvent();
       
       var utilsService = $injector.get('uiFormValidation.utilsService');
       utilsService.addValidationController(scope, validationController);
@@ -457,7 +585,7 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation, $injecto
   };
 });
 
-app.directive('showErrorsMode', function($timeout, $log) {
+app.directive('validationErrorsMode', function($timeout, $log) {
     return {
       restrict: 'A',
       require: '^uiValidation',
@@ -466,16 +594,16 @@ app.directive('showErrorsMode', function($timeout, $log) {
           var wrapper = validationController.getFormOrControlWrapper(element);
           
           if (!wrapper) {
-            throw  "Unable to get element wrapper. Directive show-errors-mode is not placed probably on the form or input element.";
+            throw  "Unable to get element wrapper. Directive validation-errors-mode is not placed probably on the form or input element.";
           }
 
-          wrapper.showErrorsMode = attrs.showErrorsMode.split("\\s+");
+          wrapper.validationErrorsMode = attrs.validationErrorsMode.split("\\s+");
         });
       }
     }
 });
 
-app.directive('showErrorsLocation', function($timeout, $log) {
+app.directive('validationErrorsLocation', function($timeout, $log) {
     return {
       restrict: 'A',
       require: '^uiValidation',
@@ -484,50 +612,55 @@ app.directive('showErrorsLocation', function($timeout, $log) {
           var wrapper = validationController.getFormOrControlWrapper(element);
           
           if (!wrapper) {
-            throw  "Unable to get element wrapper. Directive show-errors-location is not placed probably on the form or input element.";
+            throw  "Unable to get element wrapper. Directive validation-errors-location is not placed probably on the form or input element.";
           }
 
-          wrapper.showErrorsLocation = attrs.showErrorsLocation;
+          wrapper.validationErrorsLocation = attrs.validationErrorsLocation;
         });
       }
     }
 });
 
-app.directive('showErrorsTemplate', function($timeout, $log) {
+app.directive('validationErrorsTemplate', function($timeout, $log) {
     return {
       restrict: 'A',
       require: 'uiValidation',
       link: function (scope, element, attrs, validationController){
-        var templateGetter = $parse(attrs.showErrorsLocation);
-        validationController.showErrorsTemplate = templateGetter(scope);
+        var templateGetter = $parse(attrs.validationErrorsLocation);
+        validationController.validationErrorsTemplate = templateGetter(scope);
       }
     }
 });
 
-app.directive('showErrors', function($timeout, $log, $injector, $compile, uiFormValidation) {
-    var ShowErrorsController = function (element, watchedControls) {
-      this.hasControlName = function (controlName) {
-        return this.watchedControls.indexOf(controlName) != -1;
-      }
-      
-      this.showErrorsElement = element;
-      this.watchedControls = watchedControls;;
-    };
-    
+app.directive('validationErrors', function($timeout, $log, $injector, $compile, uiFormValidation) {
+  var utilsService = $injector.get('uiFormValidation.utilsService'); 
+  
     return {
-  	  replace:true,
+      replace:true,
       restrict: 'A',
-      require: ['^?uiValidation, showErrors'],
+      require: ['^?uiValidation', 'validationErrors'],
       template: function (element, attrs, $scope) {
-        return uiFormValidation.showErrorsTemplate();
+        return uiFormValidation.validationErrorsTemplate();
       },
-      scope: {},
-      link: function(scope, element, attrs, controllers) {
+      scope: {
+        'uiValidation' : '=uiValidation'
+      },
+      controller: function ($element) {
+        var $this = this;
+        
+        this.hasControlName = function (controlName) {
+          return this.watchedControls.indexOf(controlName) != -1;
+        }
+        
+        this.validationErrorsElement = $element;
+        this.watchedControls = utilsService.parseControlErrorsSelectors($element.attr("validation-errors"));
+        
 
-        var watchedControls = element.attr("show-errors").split("\\s+");
+      },
+      link: function(scope, element, attrs, controllers) {
+      
         var validationController = controllers[0];
-        var showErrorsController = controllers[1] || new ShowErrorsController(element, watchedControls);
-        var utilsService = $injector.get('uiFormValidation.utilsService');  
+        var validationErrorsController = controllers[1];
             
         var validationControllerName = null;
         if (validationController) {
@@ -535,18 +668,53 @@ app.directive('showErrors', function($timeout, $log, $injector, $compile, uiForm
         } else {
           validationControllerName = attrs.validationController;
         }
+
+        utilsService.addValidationErrorsController(scope, validationControllerName, validationErrorsController);
         
-        utilsService.addShowErrorsController(scope, validationControllerName, showErrorsController);
-        scope.test = "test";
-        scope.getErrors = function () {
+        scope.errors = {};
+        
+        utilsService.afterValidationErrorsControllerInitialized(scope, validationControllerName, function () {
+
           var validationController = utilsService.validationControllers[scope][validationControllerName];
-          $log.info("getErrors");
-          if (validationController) {
-            return validationController.getErrors(showErrorsController);
-          } else {
-            return {};
-          }
-        };
+
+          scope.$watch(function () {
+            return validationController.shouldDisplayValidationErrorsForControlSelectors(validationErrorsController.watchedControls);
+          }, function (shouldToggleHidden) {      $log.info(shouldToggleHidden);
+            element.toggleClass('hidden', !shouldToggleHidden);
+          });
+          
+          angular.forEach(validationErrorsController.watchedControls, function (watchedControl, key) {
+
+            var controlWrapper = validationController.controls[watchedControl.controlName];
+            
+            if (!controlWrapper) {
+              throw "Undefined control '" + watchedControl.controlName + '" to watch.';
+            }
+            
+            scope.$watchCollection(function () {              
+              return controlWrapper.control.$error;
+            }, function () {             
+              var controlErrors = {};
+              controlErrors.control = controlWrapper.control;
+              controlErrors.controlElement = controlErrors.controlElement;
+              controlErrors.errors = {};
+              
+              if (controlWrapper.control && controlWrapper.control.$error) {
+                angular.forEach(controlWrapper.control.$error, function (error, errorName) {
+                var formValidation = uiFormValidation.formValidations[errorName];
+
+                if (error && formValidation) {
+                  controlErrors.errors[errorName] = formValidation.errorMessage(errorName, scope.$parent, controlWrapper, validationController);
+                } else if (error) {
+                  controlErrors.errors[errorName] = uiFormValidation.defaultErrorMessage(errorName, scope.$parent, controlWrapper, validationController);
+                }
+                });
+              }
+              
+              scope.errors[watchedControl.controlName] = controlErrors;
+            });
+          });
+        });
       }
     }
 });
@@ -562,13 +730,44 @@ app.directive('validationController', function($timeout, $log, $injector) {
     }
 });
 
-app.directive('validSubmit', function ($parse, $log) {
+app.directive('validationSubmit', function ($parse, $log, $injector) {
   return {
     restrict: 'A',
-    require: ['uiValidation', '?form'],
-    controller: 'uiValidationController',
-    link: function(scope, formElement, attrs, controllers) {
-
+    link: function(scope, element, attrs) {
+      var utilsService = $injector.get('uiFormValidation.utilsService');  
+                
+      utilsService.afterValidationErrorsControllerInitialized(scope, attrs.validationSubmit, function () {
+        var validationController = utilsService.validationControllers[scope][attrs.validationSubmit];
+        
+        element.bind('click', function (event) {
+          scope.$apply(function () {
+            validationController.submit();
+          });
+        });
+      });
+      
     }
   }
+});
+
+app.directive('validationInputs', function($compile, $log, $injector) {
+  var utilsService = $injector.get('uiFormValidation.utilsService'); 
+  
+    return {
+      restrict: 'A',
+      require:  '^uiValidation',
+      link: function(scope, element, attrs, validationController) {     
+
+        var inputs = attrs.validationInputs;
+        var controlAndErrorSelectors = utilsService.parseControlErrorsSelectors(inputs);
+
+        validationController.afterInitialized(function () {
+          scope.$watch(function () {
+            return validationController.hasControlsErrors(controlAndErrorSelectors);
+          }, function (shouldToggleHasError) {
+            element.toggleClass('has-error', shouldToggleHasError);
+          });
+        });
+      }
+    }
 });

@@ -1,0 +1,109 @@
+<div>
+    <div class="modal-header">
+        <h3 class="modal-title">Create build request</h3>
+    </div>
+    <div class="modal-body">
+        <form role="form" name="buildRequestForm" ui-validation ng-submit="save()">
+            <div class="form-group form-group-lg" ng-controller="BundlesController" validation-inputs="fdBundle">
+                <label class="control-label" for="fdBundles">Bundle</label>
+                <div class="input-group">
+	                <ui-select ng-model="form.fdBundle" ng-required="true" server-response="validationError['code']" theme="bootstrap" ng-init="getAll('bundles')" name="fdBundle">
+	                    <ui-select-match placeholder="Search or select bundle">{{$select.selected.code}}</ui-select-match>
+	                    <ui-select-choices repeat="bundle in bundles | propsFilter: {code: $select.search, description: $select.search} track by bundle.id">
+	                        <div ng-bind-html="bundle.code | highlight: $select.search"></div>
+	                        <small><i>
+	                        <strong>description: </strong>
+	                        <span ng-bind-html="bundle.description | highlight: $select.search"></span>
+	                        <span ng-if="!bundle.description" class="text-muted">(empty)</span>
+	                        </i></small>
+	                    </ui-select-choices>
+	                </ui-select>
+	                
+                    <span class="input-group-btn">
+                        <button type="button" class="btn btn-default" ng-click="form.fdBundle = undefined">
+                        <span class="glyphicon glyphicon-trash"></span></button>
+                    </span>
+                </div>
+                <span validation-errors="fdBundle[serverResponse]"></span>
+            </div>
+            <div class="form-group" validation-inputs="description">
+                <label class="control-label" for="description">Description</label>
+                <textarea ng-model="form.description" required server-response="validationError['description']" msd-elastic="\n" class="form-control" id="description" placeholder="Description" name="description"> </textarea>
+                <span validation-errors="description[serverResponse]"></span>
+            </div>
+            <div class="form-group" validation-inputs="buildFileName">
+                <label class="control-label" for="buildFileName">Build file name</label>
+                <input autofocus ng-model="form.buildFileName" type="text" class="form-control" id="buildFileName" placeholder="Build file name" name="buildFileName">
+                <span validation-errors="buildFileName[serverResponse]"></span>
+            </div>
+            <div class="form-group" ng-controller="InstallerTypesController" validation-inputs="fdInstallerType">
+                <label class="control-label" for="fdInstallerType">Installer type</label>
+                <ui-select ng-model="form.fdInstallerType" server-response="validationError['fdInstallerType']" ng-required="true" theme="bootstrap" ng-init="getAll('installerTypes')" name="fdInstallerType">
+                    <ui-select-match placeholder="Select installer type">{{$select.selected.name}}</ui-select-match>
+                    <ui-select-choices repeat="installerType in installerTypes track by installerType.id">
+                        <div ng-bind-html="installerType.name"></div>
+                    </ui-select-choices>
+                </ui-select>
+                <span validation-errors="fdInstallerType[serverResponse]"></span>
+            </div>
+
+            <div class="form-group" validation-inputs="validTill">
+                <label class="control-label" for="validTill">Valid till</label>
+	            <div class="input-group">
+	              <input ng-model="form.validTill" server-response="validationError['validTill']" required placeholder="Type or select date" type="text" class="form-control" datepicker-popup="d.M.yyyy" is-open="opened" close-text="Close" name="validTill"/>
+	              <span class="input-group-btn">
+	                <button type="button" class="btn btn-default" ng-click="openDatePicker($event)"><i class="glyphicon glyphicon-calendar"></i></button>
+	              </span>
+	            </div>
+	            <span validation-errors="validTill[serverResponse]"></span>
+            </div>
+            <div>
+                <h4>Options</h4>
+            </div>
+            <div class="form-group">
+				<div class="checkbox" validation-inputs="isOneTimeRequest">
+	                <label for="isOneTimeRequest" class="checkbox">
+	                    <input name="isOneTimeRequest" server-response="validationError['isOneTimeRequest']" type="checkbox" ng-model="form.isOneTimeRequest">
+	                    Is one time request
+	                </label>
+				</div>
+				<span validation-errors="isOneTimeRequest[serverResponse]"></span>
+            </div>
+            <div ng-if="form.fdBundle != null">
+                <h4>Bundle attributes</h4>
+			    <div ng-repeat="attribute in form.fdBundle.fdAttributes | buildRequestAttributeFilter">
+			        <div ng-init="form.fdBuildRequestAttributes[$index].fdAttribute = attribute"/>
+			        <!-- Is form field -->
+                    <div class="form-group" ng-if="attribute.isFormField">
+	                    <label>{{attribute.name}}</label>
+	                    <div ng-init="form.fdBuildRequestAttributes[$index].value = attribute.defaultValue"/>
+	                    <input class="form-control" type="text" ng-model="form.fdBuildRequestAttributes[$index].value" ng-attr-name="{{'fdBuildRequestAttributes[' + $index + ']'}}"/>
+	                    <span validation-errors="fdBuildRequestAttributes[' + $index + ']"></span>
+	                </div>
+                    <!-- Else -->
+                    <div ng-if="!attribute.isFormField" ng-init="form.fdBuildRequestAttributes[$index].value = attribute.defaultValue" />
+			    </div>
+            </div>
+            <div ng-if="form.fdBundle != null && form.fdBundle.fdApplications != null">
+                <div ng-repeat="application in form.fdBundle.fdApplications">
+                    <h4>{{application.code}} attributes</h4>
+	                <div ng-repeat="attribute in application.fdAttributes | buildRequestAttributeFilter">
+	                    <!-- Is form field -->
+	                    <div class="form-group" ng-if="attribute.isFormField">
+	                        <label>{{attribute.name}}</label>
+	                        <div ng-init="form.fdBuildRequestAttributes[$index].value = attribute.defaultValue"/>
+	                        <input class="form-control" type="text" ng-model="form.fdBuildRequestAttributes[$index].value" ng-attr-name="{{'fdBuildRequestAttributes[' + $index + ']'}}"/>
+	                        <span validation-errors="fdBuildRequestAttributes[' + $index + ']"></span>
+	                    </div>
+	                    <!-- Else -->
+	                    <div ng-if="!attribute.isFormField" ng-init="form.fdBuildRequestAttributes[$index].value = attribute.defaultValue" />
+	                </div>
+	            </div>
+            </div>
+        </form>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-primary" validation-submit="buildRequestForm">Save</button>
+        <button class="btn btn-primary" ng-click="cancel()">Cancel</button>
+    </div>
+</div>
