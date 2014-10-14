@@ -11,7 +11,7 @@ Library package contains some demos located on `examples`.
   
 **List of demos:**
   
-1. `index.html` - Simple form validation using bootstrap ([plunker](http://plnkr.co/edit/ArMpukWIhDy0MEuNQA0p))
+1. `index.html` - Simple form validation using bootstrap ([plunker](http://plnkr.co/edit/ArMpukWIhDy0MEuNQA0p?p=preview))
 
 
 ## Contact and credits
