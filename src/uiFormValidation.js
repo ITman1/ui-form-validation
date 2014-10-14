@@ -1,6 +1,6 @@
 'use strict';
 
-var app = angular.module('uiFormValidation', ['ngSanitize', 'ui.bootstrap']);
+var app = angular.module('uiFormValidation', ['ngSanitize']);
 
 /*
  * FIXME: Move attribute validationErrorsTemplate to validation errors, definition of the template 
@@ -38,8 +38,8 @@ app.factory('uiFormValidation.validationErrorsLocation.after', function ($inject
           insertElement = argElement;
         }
       }
-      
-      validationErrorsElement.insertAfter(insertElement);
+
+      insertElement.after(validationErrorsElement);
     }
   };
 });
@@ -88,7 +88,7 @@ app.constant('uiFormValidation.supportedValidations', {
     validate: function (value) {
       return !(!value);
     },
-    errorMessage: function (value, scope, control, validationController) {
+    errorMessage: function (errorName, scope, control, validationController) {
       return "Field is required.";
     }
   },
@@ -102,10 +102,34 @@ app.constant('uiFormValidation.supportedValidations', {
       var error = validationContext.scope.$eval(adhocPath);
       return !error;
     },
-    errorMessage: function (value, scope, control, validationController) {
+    errorMessage: function (errorName, scope, control, validationController) {
       var adhocPath = control.controlElement.attr("validate-adhoc");
       var error = scope.$eval(adhocPath);
       return error;
+    }
+  },
+  'validateLength' : {
+    validationName: "validateLength",
+    performableValidation: function () {
+      return true;
+    },
+    validate: function (value, validationContext) {
+      return value && value.length && value.length >= parseInt(validationContext.element.attr("validate-length"));
+    },
+    errorMessage: function (errorName, scope, control, validationController) {
+      return "Expected text length with at least " + control.controlElement.attr("validate-length") + " characters.";
+    }
+  },
+  'validateRegex' : {
+    validationName: "validateRegex",
+    performableValidation: function () {
+      return true;
+    },
+    validate: function (value, validationContext) {
+      return new RegExp(validationContext.element.attr("validate-regex")).test(value);
+    },
+    errorMessage: function (errorName, scope, control, validationController) {
+      return "Value does not matches regular expression " + control.controlElement.attr("validate-regex") + ".";
     }
   }
 });
@@ -237,7 +261,7 @@ app.provider('uiFormValidation', function ($injector, $compileProvider) {
   this.formValidations = {};
   
   this.validationErrorsTemplate = function() {
-    return '<div class="alert alert-error"><div ng-repeat="controlErrors in errors"><div class="row" ng-repeat="controlError in controlErrors.errors"><span ng-bind-html="controlError"</span></div></div></div>';
+    return '<div class="alert alert-danger"><div ng-repeat="controlErrors in errors"><div class="row" ng-repeat="controlError in controlErrors.errors"><span ng-bind-html="controlError"</span></div></div></div>';
   };
   
   this.defaultErrorMessage = function(errorName, scope, control, validationController) {
@@ -250,7 +274,7 @@ app.provider('uiFormValidation', function ($injector, $compileProvider) {
   var validationNoticeModes = $injector.get('uiFormValidation.validationNoticeModes');
   this.validationNoticeMode = [validationNoticeModes.onSubmitAndInvalid, validationNoticeModes.onDirtyAndInvalid];
   
-  this.validationErrorsLocation = "after[this]";
+  this.validationErrorsLocation = "after{this}";
   
   this.addFormValidation = function(validation) {
     this.formValidations[validation.validationName] = validation;
@@ -675,7 +699,7 @@ app.directive('uiValidation', function ($parse, $log, uiFormValidation, $injecto
       var validationController = controllers[0];
       var formController = controllers[1];
       
-      formElement.prop("novalidate", true);
+      formElement.attr("novalidate", true);
 
       validationController.initialize(formController, formElement);
       validationController.injectValidationErrors();
@@ -827,7 +851,7 @@ var validationErrorsDirective = function(directiveName, directiveController, $lo
               return controlWrapper.control.$error;
             }, function () {
             
-              if (!watchedControl.errors) {
+              if (watchedControl.errors && watchedControl.errors.length < 1) {
                 scope.errors = {};
                 return;
               }
@@ -841,7 +865,7 @@ var validationErrorsDirective = function(directiveName, directiveController, $lo
                 angular.forEach(controlWrapper.control.$error, function (error, errorName) {
                   var formValidation = uiFormValidation.formValidations[errorName];
 
-                  if (watchedControl.errors.indexOf(errorName) == -1) {
+                  if (watchedControl.errors && watchedControl.errors.indexOf(errorName) == -1) {
                     delete controlErrors.errors[errorName];
                   } else if (error && formValidation) {
                     controlErrors.errors[errorName] = formValidation.errorMessage(errorName, scope.$parent, controlWrapper, validationController);
