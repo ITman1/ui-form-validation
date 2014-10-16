@@ -1,4 +1,4 @@
-UI Form Validation
+AngularJS UI Form Validation (Bootstrap)
 ======
 
 ...
