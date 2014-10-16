@@ -1,0 +1,36 @@
+{
+  "name": "ui-form-validation",
+  "version": "0.0.1",
+  "description": "AngularJS directives for making the AngularJS's form validation results visible to user.",
+  "main": "/dist/uiFormValidation.js",
+  "keywords": [
+    "AngularJS",
+    "Twitter",
+    "Bootstrap",
+    "Form",
+    "Validation",
+    "Validators",
+    "UI",
+    "Has-Error",
+    "Directive",
+    "Controller"
+  ],
+  "authors": [
+    "Radim Loskot"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/ITman1/ui-form-validation",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular": ">=1.2.18"
+  },
+  "devDependencies": {
+    "angular-sanitize": ">=1.2.18"
+  }
+}
