@@ -988,3 +988,14 @@ app.directive('validationNotice', function ($compile, $log, $injector) {
 app.directive('ngValidationNotice', function ($compile, $log, $injector) {
   return validationNoticeDirective('ngValidationNotice', 'ngValidationNoticeController', $compile, $log, $injector);
 });
+
+app.directive("ngName",[function(){
+    return {
+        restrict:"A",
+        require: ['ngModel', '^form'],
+        link:function(scope,element,attrs,ctrls){
+            ctrls[0].$name = scope.$eval(attrs.ngName) || attrs.ngName;
+            ctrls[1].$addControl(ctrls[0]);
+        }
+    };
+}])
