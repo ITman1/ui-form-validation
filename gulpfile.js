@@ -6,7 +6,7 @@
 // Load plugins
 var gulp = require('gulp'),
 jshint = require('gulp-jshint'),
-concat = require('gulp-concat'),
+concat = require('gulp-concat-util'),
 notify = require('gulp-notify'),
 rename = require('gulp-rename'),
 uglify = require('gulp-uglify'),
@@ -17,7 +17,9 @@ gulp.task('scripts', function() {
 return gulp.src('src/scripts/**/*.js')
   .pipe(jshint('.jshintrc'))
   .pipe(jshint.reporter('default'))
-  .pipe(concat('uiFormValidation.js'))
+  .pipe(concat('uiFormValidation.js', {process: function(src) { return (src.trim() + '\n').replace(/(^|\n)[ \t]*('use strict'|"use strict");?\s*/g, '$1'); }}))
+  .pipe(concat.header('(function(window, document, undefined) {\n\'use strict\';\n'))
+  .pipe(concat.footer('\n})(window, document);\n'))
   .pipe(gulp.dest('dist/scripts'))
   .pipe(rename({ suffix: '.min' }))
   .pipe(uglify())
@@ -26,7 +28,7 @@ return gulp.src('src/scripts/**/*.js')
 });
  
 gulp.task('clean', function(cb) {
-  del(['dist/'], cb)
+  del(['dist/'], cb);
 });
  
 gulp.task('default', ['clean'], function() {
