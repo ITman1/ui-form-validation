@@ -10,7 +10,7 @@ angular.module('uiFormValidation.directives').directive('validationSubmit', func
     restrict: 'A',
     link: function(scope, element, attrs) { 
                 
-      utilsService.afterValidationErrorsControllerInitialized(scope, attrs.validationSubmit, function () {
+      utilsService.afterValidationControllerInitialized(scope, attrs.validationSubmit, function () {
         var validationController = utilsService.validationControllers[scope][attrs.validationSubmit];
         
         element.bind('click', function () {

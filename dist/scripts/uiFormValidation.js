@@ -1,3 +1,11 @@
+/*!
+ * ui-form-validation
+ * https://github.com/ITman1/ui-form-validation
+ * Version: 0.0.1 - 2014-10-28T19:37:19.276Z
+ * License: MIT
+ */
+
+
 (function(window, document, undefined) {
 'use strict';
 angular.module('uiFormValidation.constants', []);
@@ -49,51 +57,29 @@ angular.module('uiFormValidation', [
  *       maintaining custom validation directives, notice modes, validation modes etc.
 */
 
-angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.after', function (utilsService) {
-  return {
-    name: "after",
-    link: function (scope, validationErrorsElement, controlWrapper, args) {
-      var insertElement = controlWrapper.controlElement;
-      
-      if (args.length > 0) {
-        var argElement = utilsService.selectFromScope(insertElement, args[0]);
-        
-        if (argElement) {
-          insertElement = argElement;
-        }
-      }
+angular.module('uiFormValidation.controllers').controller('validationErrorsController', function (utilsService, $scope) {
 
-      insertElement.after(validationErrorsElement);
-    }
+  this.parseControlErrorsSelectors = function (inputs) {
+    if (utilsService.isExpression(inputs)) {
+      inputs = utilsService.parseExpression(inputs);
+      return utilsService.evalAndParseControlErrorsSelectors($scope.$parent, inputs); // FIXME: $parent??
+    } else {
+      return utilsService.parseControlErrorsSelectors(inputs);
+    };
   };
 });
 
-angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.append', function (utilsService) {
-  return {
-    name: "append",
-    link: function (scope, validationErrorsElement, controlWrapper, args) {      
-      var appendElement = controlWrapper.controlElement;
-      
-      if (args.length > 0) {
-        var argElement = utilsService.selectFromScope(appendElement, args[0]);
-        
-        if (argElement) {
-          appendElement = argElement;
-        }
-      }
-      
-      appendElement.append(validationErrorsElement);
-    }
-  };
-});
+angular.module('uiFormValidation.controllers').controller('validationNoticeController', function (utilsService, $scope) {
 
-angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.explicit', function () {
-  return {
-    name: "explicit",
-    compile: function () { 
-      return function () {};
-    },
+  this.parseControlErrorsSelectors = function (inputs) {
+    if (utilsService.isExpression(inputs)) {
+      inputs = utilsService.parseExpression(inputs);
+      return utilsService.evalAndParseControlErrorsSelectors($scope.$parent, inputs); // FIXME: $parent??
+    } else {
+      return utilsService.parseControlErrorsSelectors(inputs);
+    };
   };
+
 });
 
 angular.module('uiFormValidation.constants').constant('uiFormValidation.supportedValidations', {
@@ -433,6 +419,7 @@ angular.module('uiFormValidation.directives').directive('uiValidation', function
           var validationErrorsElement = angular.element("<div></div>");
           validationErrorsElement.attr('validation-errors', controlName);
           validationErrorsElement.attr('validation-controller', $this.controllerName);   
+          validationErrorsElement.attr('validation-errors-template', $this.getValidationErrorsTemplate(controlName));   
           
           var parsedValidationErrorsLocation = $this.getParsedValidationErrorsLocation(controlName);
           
@@ -526,14 +513,14 @@ angular.module('uiFormValidation.directives').directive('validationController', 
  * Restrict: A
  */
 
-angular.module('uiFormValidation.directives').directive('validationErrors', function(utilsService, uiFormValidation) {
-  
+angular.module('uiFormValidation.directives').directive('validationErrors', function(utilsService, uiFormValidation, $parse) {  
     return {
       replace:true,
       restrict: 'A',
       require: ['^?uiValidation', 'validationErrors'],
-      template: function () {
-        return uiFormValidation.validationErrorsTemplate();
+      templateUrl: function($element, $scope) {
+        var elementErrorsTemplate = $element.attr('validation-errors-template');
+        return elementErrorsTemplate ? elementErrorsTemplate : uiFormValidation.validationErrorsTemplate;
       },
       scope: {
         'uiValidationController' : '@',
@@ -556,7 +543,7 @@ angular.module('uiFormValidation.directives').directive('validationErrors', func
         
         scope.errors = {};
         
-        utilsService.afterValidationErrorsControllerInitialized(scope, validationControllerName, function () {
+        utilsService.afterValidationControllerInitialized(scope, validationControllerName, function () {
 
           var validationController = utilsService.validationControllers[scope][validationControllerName];
           var watchedControls = validationErrorsController.parseControlErrorsSelectors(attrs['validationErrors']);
@@ -650,10 +637,19 @@ angular.module('uiFormValidation.directives').directive('validationErrorsMode', 
 angular.module('uiFormValidation.directives').directive('validationErrorsTemplate', function($parse) {
   return {
     restrict: 'A',
-    require: 'uiValidation',
+    require: '^uiValidation',
     link: function (scope, element, attrs, validationController){
-      var templateGetter = $parse(attrs.validationErrorsLocation);
-      validationController.validationErrorsTemplate = templateGetter(scope);
+      if (validationController) {
+        validationController.afterInitialized(function () {
+          var wrapper = validationController.getFormOrControlWrapper(element);
+
+          if (!wrapper) { // FIXME: Uncomment and fix
+            //throw  "Unable to get element wrapper. Directive validation-errors-template is not placed probably on the form or input element.";
+          } else {
+            wrapper.validationErrorsTemplate = attrs.validationErrorsTemplate;
+          }
+        });
+      }
     }
   };
 });
@@ -715,7 +711,7 @@ angular.module('uiFormValidation.directives').directive('validationSubmit', func
     restrict: 'A',
     link: function(scope, element, attrs) { 
                 
-      utilsService.afterValidationErrorsControllerInitialized(scope, attrs.validationSubmit, function () {
+      utilsService.afterValidationControllerInitialized(scope, attrs.validationSubmit, function () {
         var validationController = utilsService.validationControllers[scope][attrs.validationSubmit];
         
         element.bind('click', function () {
@@ -728,35 +724,51 @@ angular.module('uiFormValidation.directives').directive('validationSubmit', func
   };
 });
 
-angular.module('uiFormValidation.controllers').controller('validationErrorsController', function (utilsService, $scope) {
+angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.after', function (utilsService) {
+  return {
+    name: "after",
+    link: function (scope, validationErrorsElement, controlWrapper, args) {
+      var insertElement = controlWrapper.controlElement;
+      
+      if (args.length > 0) {
+        var argElement = utilsService.selectFromScope(insertElement, args[0]);
+        
+        if (argElement) {
+          insertElement = argElement;
+        }
+      }
 
-  this.parseControlErrorsSelectors = function (inputs) {
-    if (utilsService.isExpression(inputs)) {
-      inputs = utilsService.parseExpression(inputs);
-      return utilsService.evalAndParseControlErrorsSelectors($scope.$parent, inputs); // FIXME: $parent??
-    } else {
-      return utilsService.parseControlErrorsSelectors(inputs);
-    };
+      insertElement.after(validationErrorsElement);
+    }
   };
 });
 
-angular.module('uiFormValidation.controllers').controller('validationNoticeController', function (utilsService, $scope) {
-
-  this.parseControlErrorsSelectors = function (inputs) {
-    if (utilsService.isExpression(inputs)) {
-      inputs = utilsService.parseExpression(inputs);
-      return utilsService.evalAndParseControlErrorsSelectors($scope.$parent, inputs); // FIXME: $parent??
-    } else {
-      return utilsService.parseControlErrorsSelectors(inputs);
-    };
+angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.append', function (utilsService) {
+  return {
+    name: "append",
+    link: function (scope, validationErrorsElement, controlWrapper, args) {      
+      var appendElement = controlWrapper.controlElement;
+      
+      if (args.length > 0) {
+        var argElement = utilsService.selectFromScope(appendElement, args[0]);
+        
+        if (argElement) {
+          appendElement = argElement;
+        }
+      }
+      
+      appendElement.append(validationErrorsElement);
+    }
   };
-
 });
 
-angular.module('uiFormValidation.values').value('uiFormValidation.validationErrorsLocationFactories', {
-  after: 'uiFormValidation.validationErrorsLocation.after', 
-  append: 'uiFormValidation.validationErrorsLocation.append', 
-  explicit: 'uiFormValidation.validationErrorsLocation.explicit'
+angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.explicit', function () {
+  return {
+    name: "explicit",
+    compile: function () { 
+      return function () {};
+    },
+  };
 });
 
 angular.module('uiFormValidation.providers').provider('uiFormValidation', function ($injector, $compileProvider) {
@@ -764,14 +776,12 @@ angular.module('uiFormValidation.providers').provider('uiFormValidation', functi
   
   this.formValidations = {};
   
-  this.validationErrorsTemplate = function() {
-    return '<div class="alert alert-danger"><div ng-repeat="controlErrors in errors"><div class="row" ng-repeat="controlError in controlErrors.errors"><span ng-bind-html="controlError"</span></div></div></div>';
-  };
+  this.validationErrorsTemplate = 'validation-errors/default.html';
   
   this.defaultErrorMessage = function(errorName, scope, control, validationController) {
     return 'Validation "' + errorName + '" has failed.';
   };
-   
+  
   var validationErrorsModes = $injector.get('uiFormValidation.validationErrorsModes');
   this.validationErrorsMode = [validationErrorsModes.onSubmitAndInvalid, validationErrorsModes.onDirtyAndInvalid];
   
@@ -933,7 +943,7 @@ angular.module('uiFormValidation.services').service('utilsService', function ($i
     return scope;
   };
   
-  this.afterValidationErrorsControllerInitialized = function (scope, validationControllerName, callback) {
+  this.afterValidationControllerInitialized = function (scope, validationControllerName, callback) {
     if (this.validationControllers[scope] && this.validationControllers[scope][validationControllerName]) {
       this.validationControllers[scope][validationControllerName].afterInitialized(callback);
     } else {
@@ -1009,4 +1019,14 @@ angular.module('uiFormValidation.services').service('utilsService', function ($i
   };
 });
 
+angular.module('uiFormValidation.values').value('uiFormValidation.validationErrorsLocationFactories', {
+  after: 'uiFormValidation.validationErrorsLocation.after', 
+  append: 'uiFormValidation.validationErrorsLocation.append', 
+  explicit: 'uiFormValidation.validationErrorsLocation.explicit'
+});
+
+angular.module("uiFormValidation").run(["$templateCache", function($templateCache) {$templateCache.put("validation-errors/default.html","<div class=\"alert alert-danger\">\r\n    <div ng-repeat=\"controlErrors in errors\">\r\n	    <div class=\"row\" ng-repeat=\"controlError in controlErrors.errors\">\r\n		    <span ng-bind-html=\"controlError\"</span>\r\n	    </div>\r\n	</div>\r\n</div>");}]);
+
 })(window, document);
+
+// end of file

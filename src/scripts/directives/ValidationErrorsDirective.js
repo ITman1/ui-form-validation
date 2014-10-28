@@ -5,14 +5,14 @@
  * Restrict: A
  */
 
-angular.module('uiFormValidation.directives').directive('validationErrors', function(utilsService, uiFormValidation) {
-  
+angular.module('uiFormValidation.directives').directive('validationErrors', function(utilsService, uiFormValidation, $parse) {  
     return {
       replace:true,
       restrict: 'A',
       require: ['^?uiValidation', 'validationErrors'],
-      template: function () {
-        return uiFormValidation.validationErrorsTemplate();
+      templateUrl: function($element, $scope) {
+        var elementErrorsTemplate = $element.attr('validation-errors-template');
+        return elementErrorsTemplate ? elementErrorsTemplate : uiFormValidation.validationErrorsTemplate;
       },
       scope: {
         'uiValidationController' : '@',
@@ -35,7 +35,7 @@ angular.module('uiFormValidation.directives').directive('validationErrors', func
         
         scope.errors = {};
         
-        utilsService.afterValidationErrorsControllerInitialized(scope, validationControllerName, function () {
+        utilsService.afterValidationControllerInitialized(scope, validationControllerName, function () {
 
           var validationController = utilsService.validationControllers[scope][validationControllerName];
           var watchedControls = validationErrorsController.parseControlErrorsSelectors(attrs['validationErrors']);

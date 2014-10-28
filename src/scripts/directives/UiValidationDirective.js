@@ -268,6 +268,7 @@ angular.module('uiFormValidation.directives').directive('uiValidation', function
           var validationErrorsElement = angular.element("<div></div>");
           validationErrorsElement.attr('validation-errors', controlName);
           validationErrorsElement.attr('validation-controller', $this.controllerName);   
+          validationErrorsElement.attr('validation-errors-template', $this.getValidationErrorsTemplate(controlName));   
           
           var parsedValidationErrorsLocation = $this.getParsedValidationErrorsLocation(controlName);
           

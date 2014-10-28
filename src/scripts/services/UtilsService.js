@@ -66,7 +66,7 @@ angular.module('uiFormValidation.services').service('utilsService', function ($i
     return scope;
   };
   
-  this.afterValidationErrorsControllerInitialized = function (scope, validationControllerName, callback) {
+  this.afterValidationControllerInitialized = function (scope, validationControllerName, callback) {
     if (this.validationControllers[scope] && this.validationControllers[scope][validationControllerName]) {
       this.validationControllers[scope][validationControllerName].afterInitialized(callback);
     } else {

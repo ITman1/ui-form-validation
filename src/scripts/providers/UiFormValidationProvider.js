@@ -5,14 +5,12 @@ angular.module('uiFormValidation.providers').provider('uiFormValidation', functi
   
   this.formValidations = {};
   
-  this.validationErrorsTemplate = function() {
-    return '<div class="alert alert-danger"><div ng-repeat="controlErrors in errors"><div class="row" ng-repeat="controlError in controlErrors.errors"><span ng-bind-html="controlError"</span></div></div></div>';
-  };
+  this.validationErrorsTemplate = 'validation-errors/default.html';
   
   this.defaultErrorMessage = function(errorName, scope, control, validationController) {
     return 'Validation "' + errorName + '" has failed.';
   };
-   
+  
   var validationErrorsModes = $injector.get('uiFormValidation.validationErrorsModes');
   this.validationErrorsMode = [validationErrorsModes.onSubmitAndInvalid, validationErrorsModes.onDirtyAndInvalid];
   
