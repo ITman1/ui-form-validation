@@ -42,9 +42,6 @@ angular.module('uiFormValidation', [
 ]);
 
 /*
- * FIXME: Move attribute validationErrorsTemplate to validation errors, definition of the template 
- *        and association with control is bad because validation errors might be binded to more controls. 
- *        Selecting the right one cannot be accomplished then.
  * TODO: Refactor and make more services e.g. some registry for validation notice and errors + service 
  *       maintaining custom validation directives, notice modes, validation modes etc.
 */
