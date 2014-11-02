@@ -1,6 +1,6 @@
 {
   "name": "ui-form-validation",
-  "version": "0.0.1",
+  "version": "v0.0.2",
   "description": "AngularJS directives for making the AngularJS's form validation results visible to user.",
   "main": "/dist/uiFormValidation.js",
   "keywords": [
