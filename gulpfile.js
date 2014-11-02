@@ -19,8 +19,12 @@ var gulp = require('gulp'),
   rename = require('gulp-rename'),
   uglify = require('gulp-uglify'),
   livereload = require('gulp-livereload'),
-  del = require('del');
+  del = require('del'),
+  runSequence = require('run-sequence');
 
+var versionArg = args.version;
+versionArg = versionArg.substring(0, 1) === "v" ? versionArg : "v" + versionArg;
+  
 var config = {
     pkg : JSON.parse(fs.readFileSync('./package.json')),
     banner:
@@ -64,19 +68,35 @@ gulp.task('clean', function(cb) {
   del(['dist/'], cb);
 });
  
-gulp.task('release', function(){
-  var version = args.version;
-  if (!version) {
-    throw "Missing version";
+gulp.task('release', ['release-package'], function(cb){
+
+});
+
+gulp.task('release-package', ['release-commit'], function(){
+  if (!versionArg) {
+    throw "Missing argument with the version.";
   }
   
-  version = version.startsWith("v") ? version : "v" + version;
+  return gulp.src(['./bower.json', './package.json'])
+    .pipe(bump({version: versionArg}))
+    .pipe(gulp.dest('./'));
+});
+
+gulp.task('release-commit', ['release-tag'], function(){
+  if (!versionArg) {
+    throw "Missing argument with the version.";
+  }
   
-  gulp.src(['./bower.json', './package.json'])
-  .pipe(bump({version: version}))
-  .pipe(gulp.dest('./'));
+  return gulp.src(['./bower.json', './package.json'])
+    .pipe(git.commit('Updated package files before release of the version ' + versionArg + '.'));
+});
+
+gulp.task('release-tag', function(){
+  if (!versionArg) {
+    throw "Missing argument with the version.";
+  }
   
-  git.tag(version, 'Released new version ' + version + '.', function (err) {
+  return git.tag(versionArg, 'Released new version ' + versionArg + '.', function (err) {
     if (err) throw err;
   });
 });
