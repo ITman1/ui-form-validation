@@ -1,20 +1,14 @@
 'use strict';
 
-angular.module('uiFormValidation.providers').provider('uiFormValidation', function ($injector, $compileProvider) {
+angular.module('uiFormValidation.providers').provider('uiFormValidation', function ($compileProvider, validationErrorsModes, validationNoticeModes, supportedValidations, validationErrorsTemplates) {
   var $this = this;
   
   this.formValidations = {};
   
-  this.validationErrorsTemplate = 'validation-errors/default.html';
-  
-  this.defaultErrorMessage = function(errorName, scope, control, validationController) {
-    return 'Validation "' + errorName + '" has failed.';
-  };
-  
-  var validationErrorsModes = $injector.get('uiFormValidation.validationErrorsModes');
+  this.validationErrorsTemplate = validationErrorsTemplates.DEFAULT;
+  this.validationErrorMessagesLocale = undefined;
+    
   this.validationErrorsMode = [validationErrorsModes.onSubmitAndInvalid, validationErrorsModes.onDirtyAndInvalid];
-  
-  var validationNoticeModes = $injector.get('uiFormValidation.validationNoticeModes');
   this.validationNoticeMode = [validationNoticeModes.onSubmitAndInvalid, validationNoticeModes.onDirtyAndInvalid];
   
   this.validationErrorsLocation = "after{this}";
@@ -82,7 +76,7 @@ angular.module('uiFormValidation.providers').provider('uiFormValidation', functi
     return validation.validate(value, validationContext);
   };
   
-  this.supportedValidations = $injector.get('uiFormValidation.supportedValidations');
+  this.supportedValidations = supportedValidations;
   
   function UIFormValidationProvider() {
     this.customValidations = [];
@@ -94,8 +88,9 @@ angular.module('uiFormValidation.providers').provider('uiFormValidation', functi
     this.validationErrorsTemplate = $this.validationErrorsTemplate;
     
     this.formValidations = $this.formValidations;
-    this.defaultErrorMessage = $this.defaultErrorMessage;
 
+    this.validationErrorMessagesLocale = $this.validationErrorMessagesLocale;
+    
     angular.forEach($this.supportedValidations, function (validation, index) {
       $this.addFormValidation(validation);
     });

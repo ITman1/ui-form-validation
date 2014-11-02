@@ -1,6 +1,6 @@
 'use strict';
 
-angular.module('uiFormValidation.services').service('utilsService', function ($injector) {
+angular.module('uiFormValidation.services').service('utilsService', function () {
   var $this = this;
   
   this.validationErrorsControllers = {};
@@ -42,19 +42,7 @@ angular.module('uiFormValidation.services').service('utilsService', function ($i
       delete this.validationControllerInitializationCallbacks[scope][validationController.controllerName];
     }
   };
-    
-  this.getValidationErrorsLocationFactories = function () {
-    return $injector.get('uiFormValidation.validationErrorsLocationFactories');
-  };
-  
-  this.getValidationErrorsModes = function () {
-    return $injector.get('uiFormValidation.validationErrorsModes');
-  };
-  
-  this.getValidationNoticeModes = function () {
-    return $injector.get('uiFormValidation.validationNoticeModes');
-  };
-    
+        
   this.selectFromScope = function (scope, selector) {   
     selector = selector.trim();
 
@@ -89,7 +77,7 @@ angular.module('uiFormValidation.services').service('utilsService', function ($i
   this.parseControlErrorsSelectors = function (controlErrorsSelectorsString) {
     var controlErrorsSelectors = {};
     
-    angular.forEach(controlErrorsSelectorsString.split("\\s+"), function (controlAndError) {
+    angular.forEach(controlErrorsSelectorsString.split(/\s+/), function (controlAndError) {
       var parseRegexp = /^\s*(.*?)\s*(\{\s*([^\{\}]*?)\s*\})?$/;
       var match = parseRegexp.exec(controlAndError);
       if (match !== null && match.length === 4) {
@@ -111,7 +99,7 @@ angular.module('uiFormValidation.services').service('utilsService', function ($i
   };
   
   this.evalAndParseControlErrorsSelectors = function (scope, inputs) {
-    var inputsArr = inputs.split("\\s+");
+    var inputsArr = inputs.split(/\s+/);
 
     inputsArr = inputsArr.map(function (input) {
       return scope.$eval(input);
@@ -139,5 +127,11 @@ angular.module('uiFormValidation.services').service('utilsService', function ($i
     } else {
       return undefined;
     }
+  };
+  
+  this.camelToSnakeCase = function (camelCase, separator) {
+    return camelCase.replace(/[A-Z]/g, function (match, pos) {
+        return (pos > 0 ? separator : '') + match.toLowerCase();
+    });
   };
 });

@@ -6,6 +6,9 @@
 // Load plugins
 
 var gulp = require('gulp'),
+  git = require('gulp-git'),
+  bump = require('gulp-bump'),
+  args   = require('yargs').argv,
   fs = require('fs'),
   streamqueue = require('streamqueue'),
   filelog = require('gulp-filelog'),
@@ -31,7 +34,7 @@ var config = {
 
 gulp.task('scripts', function() {
   var buildTemplates = function () {
-    return gulp.src('src/templates/**/*.html')
+    return gulp.src(['src/templates/**/*.html', 'src/templates/**/*.messages'])
       .pipe(templateCache({module: 'uiFormValidation'}));
   };
     
@@ -61,6 +64,23 @@ gulp.task('clean', function(cb) {
   del(['dist/'], cb);
 });
  
+gulp.task('release', function(){
+  var version = args.version;
+  if (!version) {
+    throw "Missing version";
+  }
+  
+  version = version.startsWith("v") ? version : "v" + version;
+  
+  gulp.src(['./bower.json', './package.json'])
+  .pipe(bump({version: version}))
+  .pipe(gulp.dest('./'));
+  
+  git.tag(version, 'Released new version ' + version + '.', function (err) {
+    if (err) throw err;
+  });
+});
+
 gulp.task('default', ['clean'], function() {
   gulp.start('scripts');
 });

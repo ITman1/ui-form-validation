@@ -1,18 +1,15 @@
 'use strict';
 
-angular.module('uiFormValidation.directives').directive('uiValidation', function ($parse, uiFormValidation, utilsService, $compile, $injector) {
+angular.module('uiFormValidation.directives').directive('uiValidation', function (validationErrorMessagesService, $parse, uiFormValidation, validationErrorsModes, validationNoticeModes, validationErrorsLocationFactories, utilsService, $compile, $injector) {
   var uniqueId = 1;
   return {
     restrict: 'A',
     require: ['uiValidation', 'form'],
     controller: function ($scope, $injector, $element) {
-      var validationErrorsModes = utilsService.getValidationErrorsModes();
-      var validationNoticeModes = utilsService.getValidationNoticeModes();
-      var validationErrorsLocationFactoriesNames = utilsService.getValidationErrorsLocationFactories();
-      var validationErrorsLocationFactories = [];
+      var validationErrorsLocationFactoryInstances = [];
       
-      angular.forEach(validationErrorsLocationFactoriesNames, function (factoryName) {
-        validationErrorsLocationFactories.push($injector.get(factoryName));
+      angular.forEach(validationErrorsLocationFactories, function (factoryName) {
+        validationErrorsLocationFactoryInstances.push($injector.get(factoryName));
       });
     
       this.controllerName = $element.attr("name") || "uiValidation_" + uniqueId++;
@@ -272,7 +269,7 @@ angular.module('uiFormValidation.directives').directive('uiValidation', function
           
           var parsedValidationErrorsLocation = $this.getParsedValidationErrorsLocation(controlName);
           
-          angular.forEach(validationErrorsLocationFactories, function (validationErrorsLocationFactory) {
+          angular.forEach(validationErrorsLocationFactoryInstances, function (validationErrorsLocationFactory) {
             if (validationErrorsLocationFactory.name === parsedValidationErrorsLocation.name) {
               var link = null;
               if (validationErrorsLocationFactory.compile) {

@@ -12,7 +12,7 @@ angular.module('uiFormValidation.directives').directive('validationErrorsMode', 
           throw  "Unable to get element wrapper. Directive validation-errors-mode is not placed probably on the form or input element.";
         }
 
-        wrapper.validationErrorsMode = attrs.validationErrorsMode.split("\\s+");
+        wrapper.validationErrorsMode = attrs.validationErrorsMode.split(/\s+/);
       });
     }
   };

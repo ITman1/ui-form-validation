@@ -1,0 +1,7 @@
+<div class="alert alert-danger">
+    <div ng-repeat="controlErrors in errors">
+	    <div class="row" ng-repeat="controlError in controlErrors.errors">
+		    <span validation-error="controlError"></span>
+	    </div>
+	</div>
+</div>

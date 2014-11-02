@@ -12,7 +12,7 @@ angular.module('uiFormValidation.directives').directive('validationNoticeMode', 
           throw  "Unable to get element wrapper. Directive validation-notice-mode is not placed probably on the form or input element.";
         }
 
-        wrapper.validationNoticeMode = attrs.validationNoticeMode.split("\\s+");
+        wrapper.validationNoticeMode = attrs.validationNoticeMode.split(/\s+/);
       });
     }
   };

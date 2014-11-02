@@ -1,0 +1,7 @@
+{
+	"__default__" : "Validace {{validationName}} selhala.",
+	"required" : "Položka je povinná.",
+	"validateRequired" : "Položka je povinná.",
+	"validateLength" : "Oèekáván text alespoò o délce {{validationValue}} znakù, souèasná délka je {{controlValue ? controlValue.length : '0'}} znakù.",
+	"validateRegex" : "Hodnota nesplòuje požadovaný regulární výraz: {{validationValue}}."
+}

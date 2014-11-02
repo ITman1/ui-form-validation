@@ -5,7 +5,7 @@
  * Restrict: A
  */
 
-angular.module('uiFormValidation.directives').directive('validationErrors', function(utilsService, uiFormValidation, $parse) {  
+angular.module('uiFormValidation.directives').directive('validationErrors', function(utilsService, uiFormValidation, validationErrorMessagesService, $parse) {  
     return {
       replace:true,
       restrict: 'A',
@@ -63,25 +63,7 @@ angular.module('uiFormValidation.directives').directive('validationErrors', func
                 return;
               }
               
-              var controlErrors = {};
-              controlErrors.control = controlWrapper.control;
-              controlErrors.controlElement = controlErrors.controlElement;
-              controlErrors.errors = {};
-              
-              if (controlWrapper.control && controlWrapper.control.$error) {
-                angular.forEach(controlWrapper.control.$error, function (error, errorName) {
-                  var formValidation = uiFormValidation.formValidations[errorName];
-
-                  if (watchedControl.errors && watchedControl.errors.indexOf(errorName) == -1) {
-                    delete controlErrors.errors[errorName];
-                  } else if (error && formValidation) {
-                    controlErrors.errors[errorName] = formValidation.errorMessage(errorName, scope.$parent, controlWrapper, validationController);
-                  } else if (error) {
-                    controlErrors.errors[errorName] = uiFormValidation.defaultErrorMessage(errorName, scope.$parent, controlWrapper, validationController);
-                  }
-                });
-              }
-              
+              var controlErrors = validationErrorMessagesService.getControlErrors(scope, validationController, watchedControl, controlWrapper);             
               scope.errors[watchedControl.controlName] = controlErrors;
             });
           });

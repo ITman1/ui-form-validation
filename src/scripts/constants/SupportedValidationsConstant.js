@@ -1,6 +1,6 @@
 'use strict';
 
-angular.module('uiFormValidation.constants').constant('uiFormValidation.supportedValidations', {
+angular.module('uiFormValidation.constants').constant('supportedValidations', {
   'validateRequired' : { /* required validation */
     validationName: "validateRequired",
     performableValidation: function () {
@@ -8,9 +8,6 @@ angular.module('uiFormValidation.constants').constant('uiFormValidation.supporte
     },
     validate: function (value) {
       return !(!value);
-    },
-    errorMessage: function () {
-      return "Field is required.";
     }
   },
   'validateAdhoc' : {
@@ -23,8 +20,8 @@ angular.module('uiFormValidation.constants').constant('uiFormValidation.supporte
       var error = validationContext.scope.$eval(adhocPath);
       return !error;
     },
-    errorMessage: function (errorName, scope, control) {
-      var adhocPath = control.controlElement.attr("validate-adhoc");
+    errorMessage: function (validationErrorContext) {
+      var adhocPath = validationErrorContext.control.controlElement.attr("validate-adhoc");
       var error = scope.$eval(adhocPath);
       return error;
     }
@@ -36,9 +33,6 @@ angular.module('uiFormValidation.constants').constant('uiFormValidation.supporte
     },
     validate: function (value, validationContext) {
       return value && value.length && value.length >= parseInt(validationContext.element.attr("validate-length"));
-    },
-    errorMessage: function (errorName, scope, control, validationController) {
-      return "Expected text length with at least " + control.controlElement.attr("validate-length") + " characters.";
     }
   },
   'validateRegex' : {
@@ -48,9 +42,6 @@ angular.module('uiFormValidation.constants').constant('uiFormValidation.supporte
     },
     validate: function (value, validationContext) {
       return new RegExp(validationContext.element.attr("validate-regex")).test(value);
-    },
-    errorMessage: function (errorName, scope, control, validationController) {
-      return "Value does not matches regular expression " + control.controlElement.attr("validate-regex") + ".";
     }
   }
 });
