@@ -24,7 +24,7 @@ var gulp = require('gulp'),
   replace = require('gulp-replace');
 
 var versionArg = args.version;
-versionArg = versionArg.substring(0, 1) === "v" ? versionArg : "v" + versionArg;
+versionArg = versionArg ? (versionArg.substring(0, 1) === "v" ? versionArg : "v" + versionArg) : undefined;
 
 var getConfig = function () {
   return {

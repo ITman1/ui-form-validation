@@ -1,7 +1,7 @@
 /*!
  * ui-form-validation
  * https://github.com/ITman1/ui-form-validation
- * Version: 0.0.1 - 2014-11-02T17:28:01.604Z
+ * Version: v0.0.2 - 2014-11-02T19:10:43.208Z
  * License: MIT
  */
 
@@ -116,6 +116,31 @@ angular.module('uiFormValidation.constants').constant('validationNoticeModes', {
   onSubmitAndInvalid: "onSubmitAndInvalid", 
   onDirtyAndInvalid: "onDirtyAndInvalid", 
   onInvalid: "onInvalid"
+});
+
+angular.module('uiFormValidation.controllers').controller('validationErrorsController', function (utilsService, $scope) {
+
+  this.parseControlErrorsSelectors = function (inputs) {
+    if (utilsService.isExpression(inputs)) {
+      inputs = utilsService.parseExpression(inputs);
+      return utilsService.evalAndParseControlErrorsSelectors($scope.$parent, inputs); // FIXME: $parent??
+    } else {
+      return utilsService.parseControlErrorsSelectors(inputs);
+    };
+  };
+});
+
+angular.module('uiFormValidation.controllers').controller('validationNoticeController', function (utilsService, $scope) {
+
+  this.parseControlErrorsSelectors = function (inputs) {
+    if (utilsService.isExpression(inputs)) {
+      inputs = utilsService.parseExpression(inputs);
+      return utilsService.evalAndParseControlErrorsSelectors($scope.$parent, inputs); // FIXME: $parent??
+    } else {
+      return utilsService.parseControlErrorsSelectors(inputs);
+    };
+  };
+
 });
 
 angular.module('uiFormValidation.directives').directive('uiValidation', function (validationErrorMessagesService, $parse, uiFormValidation, validationErrorsModes, validationNoticeModes, validationErrorsLocationFactories, utilsService, $compile, $injector) {
@@ -698,29 +723,51 @@ angular.module('uiFormValidation.directives').directive('validationSubmit', func
   };
 });
 
-angular.module('uiFormValidation.controllers').controller('validationErrorsController', function (utilsService, $scope) {
+angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.after', function (utilsService) {
+  return {
+    name: "after",
+    link: function (scope, validationErrorsElement, controlWrapper, args) {
+      var insertElement = controlWrapper.controlElement;
+      
+      if (args.length > 0) {
+        var argElement = utilsService.selectFromScope(insertElement, args[0]);
+        
+        if (argElement) {
+          insertElement = argElement;
+        }
+      }
 
-  this.parseControlErrorsSelectors = function (inputs) {
-    if (utilsService.isExpression(inputs)) {
-      inputs = utilsService.parseExpression(inputs);
-      return utilsService.evalAndParseControlErrorsSelectors($scope.$parent, inputs); // FIXME: $parent??
-    } else {
-      return utilsService.parseControlErrorsSelectors(inputs);
-    };
+      insertElement.after(validationErrorsElement);
+    }
   };
 });
 
-angular.module('uiFormValidation.controllers').controller('validationNoticeController', function (utilsService, $scope) {
-
-  this.parseControlErrorsSelectors = function (inputs) {
-    if (utilsService.isExpression(inputs)) {
-      inputs = utilsService.parseExpression(inputs);
-      return utilsService.evalAndParseControlErrorsSelectors($scope.$parent, inputs); // FIXME: $parent??
-    } else {
-      return utilsService.parseControlErrorsSelectors(inputs);
-    };
+angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.append', function (utilsService) {
+  return {
+    name: "append",
+    link: function (scope, validationErrorsElement, controlWrapper, args) {      
+      var appendElement = controlWrapper.controlElement;
+      
+      if (args.length > 0) {
+        var argElement = utilsService.selectFromScope(appendElement, args[0]);
+        
+        if (argElement) {
+          appendElement = argElement;
+        }
+      }
+      
+      appendElement.append(validationErrorsElement);
+    }
   };
+});
 
+angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.explicit', function () {
+  return {
+    name: "explicit",
+    compile: function () { 
+      return function () {};
+    },
+  };
 });
 
 angular.module('uiFormValidation.providers').provider('uiFormValidation', function ($compileProvider, validationErrorsModes, validationNoticeModes, supportedValidations, validationErrorsTemplates) {
@@ -1133,53 +1180,6 @@ angular.module('uiFormValidation.services').service('validationErrorMessagesServ
   
 });
 
-angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.after', function (utilsService) {
-  return {
-    name: "after",
-    link: function (scope, validationErrorsElement, controlWrapper, args) {
-      var insertElement = controlWrapper.controlElement;
-      
-      if (args.length > 0) {
-        var argElement = utilsService.selectFromScope(insertElement, args[0]);
-        
-        if (argElement) {
-          insertElement = argElement;
-        }
-      }
-
-      insertElement.after(validationErrorsElement);
-    }
-  };
-});
-
-angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.append', function (utilsService) {
-  return {
-    name: "append",
-    link: function (scope, validationErrorsElement, controlWrapper, args) {      
-      var appendElement = controlWrapper.controlElement;
-      
-      if (args.length > 0) {
-        var argElement = utilsService.selectFromScope(appendElement, args[0]);
-        
-        if (argElement) {
-          appendElement = argElement;
-        }
-      }
-      
-      appendElement.append(validationErrorsElement);
-    }
-  };
-});
-
-angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.explicit', function () {
-  return {
-    name: "explicit",
-    compile: function () { 
-      return function () {};
-    },
-  };
-});
-
 angular.module('uiFormValidation.values').constant('validationErrorMessages', {
   DEFAULT: ["validation-error-messages/en-US.messages"],
   EN_US: ["validation-error-messages/en-US.messages"], 
@@ -1192,8 +1192,8 @@ angular.module('uiFormValidation.values').value('validationErrorsLocationFactori
   explicit: 'uiFormValidation.validationErrorsLocation.explicit'
 });
 
-angular.module("uiFormValidation").run(["$templateCache", function($templateCache) {$templateCache.put("validation-errors/default.html","<div class=\"alert alert-danger\">\r\n    <div ng-repeat=\"controlErrors in errors\">\r\n	    <div class=\"row\" ng-repeat=\"controlError in controlErrors.errors\">\r\n		    <span ng-bind-html=\"controlError\"</span>\r\n	    </div>\r\n	</div>\r\n</div>");
-$templateCache.put("validation-errors-templates/default.html","<div class=\"alert alert-danger\">\r\n    <div ng-repeat=\"controlErrors in errors\">\r\n	    <div class=\"row\" ng-repeat=\"controlError in controlErrors.errors\">\r\n		    <span validation-error=\"controlError\"></span>\r\n	    </div>\r\n	</div>\r\n</div>");
+angular.module("uiFormValidation").run(["$templateCache", function($templateCache) {$templateCache.put("validation-errors-templates/default.html","<div class=\"alert alert-danger\">\r\n    <div ng-repeat=\"controlErrors in errors\">\r\n	    <div class=\"row\" ng-repeat=\"controlError in controlErrors.errors\">\r\n		    <span validation-error=\"controlError\"></span>\r\n	    </div>\r\n	</div>\r\n</div>");
+$templateCache.put("validation-errors/default.html","<div class=\"alert alert-danger\">\r\n    <div ng-repeat=\"controlErrors in errors\">\r\n	    <div class=\"row\" ng-repeat=\"controlError in controlErrors.errors\">\r\n		    <span ng-bind-html=\"controlError\"</span>\r\n	    </div>\r\n	</div>\r\n</div>");
 $templateCache.put("validation-error-messages/cs-CZ.messages","{\r\n	\"__default__\" : \"Validace {{validationName}} selhala.\",\r\n	\"required\" : \"Polo�ka je povinn�.\",\r\n	\"validateRequired\" : \"Polo�ka je povinn�.\",\r\n	\"validateLength\" : \"O�ek�v�n text alespo� o d�lce {{validationValue}} znak�, sou�asn� d�lka je {{controlValue ? controlValue.length : \'0\'}} znak�.\",\r\n	\"validateRegex\" : \"Hodnota nespl�uje po�adovan� regul�rn� v�raz: {{validationValue}}.\"\r\n}");
 $templateCache.put("validation-error-messages/en-US.messages","{\r\n	\"__default__\" : \"Validation {{validationName}} has failed.\",\r\n	\"required\" : \"Field is required.\",\r\n	\"validateRequired\" : \"Field is required.\",\r\n	\"validateLength\" : \"Expecting text with length at least {{validationValue}} characters, but length is {{controlValue ? controlValue.length : \'0\'}} characters.\",\r\n	\"validateRegex\" : \"Value does not matches regular expression {{validationValue}}.\"\r\n}\r\n");}]);
 
