@@ -15,7 +15,7 @@ bower install ui-form-validation
 
   - Include script location inside HTML:
 ````
-<script src="bower_components/ui-form-validation/dist/uiFormValidation.min.js"></script>
+<script src="bower_components/ui-form-validation/dist/scripts/uiFormValidation.min.js"></script>
 ````
   - Add the `uiFormValidation` module in your application: 
 ````
