@@ -5,6 +5,23 @@ AngularJS UI Form Validation (Bootstrap)
 
 **Status of project:** (in development)  
 
+## Installation
+#### Bower
+````
+bower install ui-form-validation
+````
+
+## Usage
+
+  - Include script location inside HTML:
+````
+<script src="bower_components/ui-form-validation/dist/uiFormValidation.min.js"></script>
+````
+  - Add the `uiFormValidation` module in your application: 
+````
+angular.module("myModule", ["uiFormValidation"]); 
+````
+
 ## Demos
   
 Library package contains some demos located on `examples`.
