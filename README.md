@@ -27,8 +27,8 @@ angular.module("myModule", ["uiFormValidation"]);
 Library package contains some demos located on `examples`.
   
 **List of demos:**
-  
-1. `index.html` - Simple form validation using bootstrap ([plunker](http://plnkr.co/edit/ArMpukWIhDy0MEuNQA0p?p=preview))
+
+&nbsp;&nbsp;&nbsp;[![Plunker](http://cdn.altrn.tv/icons/plunkr_29051.png?width=13&height=13)](http://plnkr.co/edit/ArMpukWIhDy0MEuNQA0p?p=preview) [`index.html`](http://plnkr.co/edit/ArMpukWIhDy0MEuNQA0p?p=preview) -- Simple form validation using bootstrap 
 
 
 ## Contact and credits
