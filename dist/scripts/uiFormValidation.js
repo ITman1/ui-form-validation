@@ -1,7 +1,7 @@
 /*!
  * ui-form-validation
  * https://github.com/ITman1/ui-form-validation
- * Version: v0.0.2 - 2014-12-13T20:37:26.784Z
+ * Version: v0.0.3 - 2014-12-13T21:00:59.609Z
  * License: MIT
  */
 
@@ -753,53 +753,6 @@ angular.module('uiFormValidation.directives').directive('validationSubmit', func
   };
 });
 
-angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.after', function (utilsService) {
-  return {
-    name: "after",
-    link: function (scope, validationErrorsElement, controlWrapper, args) {
-      var insertElement = controlWrapper.controlElement;
-      
-      if (args.length > 0) {
-        var argElement = utilsService.selectFromScope(insertElement, args[0]);
-        
-        if (argElement) {
-          insertElement = argElement;
-        }
-      }
-
-      insertElement.after(validationErrorsElement);
-    }
-  };
-});
-
-angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.append', function (utilsService) {
-  return {
-    name: "append",
-    link: function (scope, validationErrorsElement, controlWrapper, args) {      
-      var appendElement = controlWrapper.controlElement;
-      
-      if (args.length > 0) {
-        var argElement = utilsService.selectFromScope(appendElement, args[0]);
-        
-        if (argElement) {
-          appendElement = argElement;
-        }
-      }
-      
-      appendElement.append(validationErrorsElement);
-    }
-  };
-});
-
-angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.explicit', function () {
-  return {
-    name: "explicit",
-    compile: function () { 
-      return function () {};
-    },
-  };
-});
-
 angular.module('uiFormValidation.providers').provider('uiFormValidation', function ($compileProvider, validationErrorsModes, validationNoticeModes, supportedValidations, validationErrorsTemplates) {
   var $this = this;
   
@@ -908,6 +861,53 @@ angular.module('uiFormValidation.providers').provider('uiFormValidation', functi
   this.$get = [function () {
     return new UIFormValidationProvider();
   }];
+});
+
+angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.after', function (utilsService) {
+  return {
+    name: "after",
+    link: function (scope, validationErrorsElement, controlWrapper, args) {
+      var insertElement = controlWrapper.controlElement;
+      
+      if (args.length > 0) {
+        var argElement = utilsService.selectFromScope(insertElement, args[0]);
+        
+        if (argElement) {
+          insertElement = argElement;
+        }
+      }
+
+      insertElement.after(validationErrorsElement);
+    }
+  };
+});
+
+angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.append', function (utilsService) {
+  return {
+    name: "append",
+    link: function (scope, validationErrorsElement, controlWrapper, args) {      
+      var appendElement = controlWrapper.controlElement;
+      
+      if (args.length > 0) {
+        var argElement = utilsService.selectFromScope(appendElement, args[0]);
+        
+        if (argElement) {
+          appendElement = argElement;
+        }
+      }
+      
+      appendElement.append(validationErrorsElement);
+    }
+  };
+});
+
+angular.module('uiFormValidation.factories').factory('uiFormValidation.validationErrorsLocation.explicit', function () {
+  return {
+    name: "explicit",
+    compile: function () { 
+      return function () {};
+    },
+  };
 });
 
 angular.module('uiFormValidation.services').service('utilsService', function () {
