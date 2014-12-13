@@ -1,18 +1,31 @@
 'use strict';
 
-angular.module('uiFormValidation.services').service('validationErrorMessagesService', function (uiFormValidation, validationErrorMessages, utilsService, $locale, $templateCache, $cacheFactory, $parse, $compile, $rootScope, $log) {
+angular.module('uiFormValidation.services').service('validationErrorMessagesService', function (uiFormValidation, validationErrorMessages, utilsService, $locale, $templateCache, $cacheFactory, $log, $http) {
   var $this = this;
   var validationErrorMessagesCache = $cacheFactory('validationErrorMessagesCache');
   
+  this.invalidatedDate = new Date();
+  
   this.invalidateCache = function (locale) {
-    if (locale && locale != 'DEFAULT') {
+    if (locale && locale != 'default') {
       validationErrorMessagesCache.remove(locale);
     } else {
       validationErrorMessagesCache.removeAll();
     }
+    
+    this.invalidatedDate = new Date();
   };
   
   this.addValidationErrorMessages = function (locale, validationErrorMessagesName, validationErrorMessages) {
+    if (!validationErrorMessages) {
+      $http.get(validationErrorMessagesName)
+      .then(function(res){
+         $this.addValidationErrorMessages(locale, validationErrorMessagesName, res.data);                
+       });
+      
+      return;
+    }
+    
     var localeValidationErrorMessages = this.getValidationErrorMessages(locale);
     
     if (!localeValidationErrorMessages) {
@@ -78,7 +91,7 @@ angular.module('uiFormValidation.services').service('validationErrorMessagesServ
   };
   
   this.getDefaultValidationErrorMessages = function () {
-    return this.getValidationErrorMessagesInstance('DEFAULT', validationErrorMessages.DEFAULT);
+    return this.getValidationErrorMessagesInstance('default', validationErrorMessages.DEFAULT);
   };
   
   this.getValidationErrorMessagesInstance = function (locale, validationErrorMessagesTemplateNames) {   
@@ -91,16 +104,23 @@ angular.module('uiFormValidation.services').service('validationErrorMessagesServ
         var validationErrorMessagesTemplate = $templateCache.get(validationErrorMessagesTemplateName);
         var validationErrorMessagesTemplateInstance = angular.fromJson(validationErrorMessagesTemplate);
         
-        angular.extend(validationErrorMessagesInstance, validationErrorMessagesTemplateInstance);
+        angular.forEach(validationErrorMessagesTemplateInstance, function (controllerMessages, controllerName) {
+          validationErrorMessagesInstance[controllerName] = validationErrorMessagesInstance[controllerName] || {};
+          angular.extend(validationErrorMessagesInstance[controllerName], controllerMessages);
+        });
+        
       });
       
       /* Put default validation message if there is no translation */
-      if (locale != 'DEFAULT') {
+      if (locale != 'default') {
         var defaultValidationErrorMessages = this.getDefaultValidationErrorMessages();
-        angular.forEach(defaultValidationErrorMessages, function (defaultValidationErrorMessage, key) {
-          if (!validationErrorMessagesInstance[key]) {
-            validationErrorMessagesInstance[key] = defaultValidationErrorMessage;
-          }
+        angular.forEach(defaultValidationErrorMessages, function (controllerMessages, controllerName) {
+          validationErrorMessagesInstance[controllerName] = validationErrorMessagesInstance[controllerName] || {};
+          angular.forEach(defaultValidationErrorMessages[controllerName], function (defaultValidationErrorMessage, key) {
+            if (!validationErrorMessagesInstance[controllerName][key]) {
+              validationErrorMessagesInstance[controllerName][key] = defaultValidationErrorMessage;
+            }
+          });
         });
       }
       
@@ -149,10 +169,10 @@ angular.module('uiFormValidation.services').service('validationErrorMessagesServ
               errorMessage = errorMessage(validationErrorContext);
             }
           } else {
-            errorMessage = validationErrorMessages[errorName];
+            errorMessage = $this.getValidationErrorMessage(validationErrorMessages, validationController.controllerName, errorName);
           }
         } else if (error) {
-          errorMessage = validationErrorMessages[errorName] || validationErrorMessages['__default__'];
+          errorMessage = $this.getValidationErrorMessage(validationErrorMessages, validationController.controllerName, errorName);
         };
         
         if (errorMessage) {
@@ -169,6 +189,15 @@ angular.module('uiFormValidation.services').service('validationErrorMessagesServ
     }
     
     return controlErrors;
+  };
+  
+  this.getValidationErrorMessage = function (validationErrorMessages, controllerName, errorName) {
+    if (validationErrorMessages[controllerName] && validationErrorMessages[controllerName][errorName]) {
+      return validationErrorMessages[controllerName][errorName];
+    }
+    
+    return validationErrorMessages['*'][errorName] || validationErrorMessages['*']['*'];
+    
   };
   
 });

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="validationErrorsDemoApp">
+<head>
+  <meta charset="utf-8">
+  <title>Simple Validation Demo (Bootstrap)</title>
+
+  <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.3.4/angular.js"></script>
+  <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.3.4/angular-sanitize.js"></script>
+  <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.3.4/angular-messages.js"></script>
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/angular-ui-utils/0.1.1/angular-ui-utils.min.js"></script>
+  <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.css">
+
+  <script src="../dist/scripts/uiFormValidation.js"></script>
+  <script src="validation-errors.js"></script>
+</head>
+
+<body>
+<div class="container" ng-controller="ValidationErrorsDemoController">
+
+<h1>Ways of displaying validation messages</h1>
+
+<h2>Introduction</h2>
+<p>During form validation AngularJS stores context inside special controller <code>FormController</code> where can be
+explored all errors that are present above the given form. If you name form by some name, the controller will be
+injected into the scope with the given name.</p>
+
+<p>For example on the <a href="basic.html">basic demo</a> we have named the form <code>exampleForm</code>, so that is why we
+can retrieve the form controller from the scope by this name. The importance of this controller
+is that it contains special object <code>$error</code> that collects all errors that are currently present above the
+form. To be more precise the <code>$error</code> gathers all validation errors from the all controls that have
+specified <code>ngModel</code> &ndash; so they participate on the validation. All of the wrapped controls against the
+form validation and with the
+<code>ngModel</code> directive can be also retrieved from the <code>FormController</code> by its name, so it is appropriate 
+to name all controls by some name. All of these controls have also <code>$error</code> object from which are collected
+all errors for the whole form.</p>
+
+<p><img style="margin: 0 auto" src="formController.PNG" class="img-responsive img-rounded" alt="Form controller"></p>
+
+<p>If you wish to display errors that have occurred during form validation using this library please follow 
+next chapter. In contrast to the library way you can stay with the standard way provided by AngularJS. AngularJS provides two preferred options:</p>
+<ul>
+	<li>Use conditional directives and specify full path to <code>$error</code> object. See
+	section <a href="#oldWay">Standard way in AngularJS up to 1.3</a>.</li>
+	<li>If you use AngularJS 1.3 and higher you can take advantage of new directive <a href="https://docs.angularjs.org/api/ngMessages/directive/ngMessages"><code>ngMessages</code></a>. For more details
+	see section <a href="#newWay">Standard way in AngularJS 1.3 and higher</a>.</li>
+</ul> 
+
+<h2 id="libWay">Way provided by this library</h2>
+
+<p>
+If you decide to use this library you can take advantage of some automatic ways how to display your validation errors.
+There is <code>validation-errors-location</code> directive for specifying the location of validation error messages.
+This directive can be placed on the <code>&lt;form&gt;</code> element or on the control eg. <code>&lt;input&gt;</code> 
+and this one overrides the directive defined on the <code>&lt;form&gt;</code>.
+</p>
+<p>
+Default value of <code>validation-errors-location</code> directive is <code>after{this}</code> and means that 
+validation errors will be automatically inserted and displayed after the control element where error has occured. Instead of <code>this</code> you can use any function of 
+<a href="https://docs.angularjs.org/api/ng/function/angular.element">jqLite or jQuery</a> for specifying
+the element where to put the error message. You can use eg. <code>after{parent()}</code> or <code>after{parent().parent()}</code>, etc.
+</p>
+
+<form class="form-horizontal" name="libAngularFormAfter" validation-errors-location="after{this}" validation-errors-mode="onInvalid" ui-validation>
+	<legend>Sample of automatic insertion of validation errors</legend>
+	
+	<div class="form-group">
+	  <label class="col-md-2 control-label" for="name4">Name</label>
+	  <div class="col-md-10 controls">
+	    <input ng-model="name4" required validate-length="5" name="name4" placeholder="Type name with at least 5 characters" class="form-control" type="text">
+	  </div>
+	</div>
+	
+	<div class="form-group">
+	  <label class="col-md-2 control-label" for="date4">Date of birth</label>
+	  <div class="col-md-10 controls">
+	    <input ng-model="date4" validate-regex="^([1-9]|[1|2][0-9]|[3][0|1])[.]([0]?[1-9]|[1][0-2])[.]([1-9][0-9]{3})$" name="date4" placeholder="Type date in format d.M.yyyy" class="form-control" type="text">
+	  </div>
+	</div>
+</form>
+
+<p>Another way is to use <code>append</code> mode. This does the similar functionality as the previous mode <code>after</code>,
+but appends the errors messages after specified element. Examples: <code>append{this}</code>, <code>append{parent()}</code>, etc.
+</p>
+
+<p>The last one and different way is to use <code>explicit</code> mode. This mode does not insert any
+errors messages automatically either. It relies on the definition of specific directive <code>validation-errors</code>
+that takes names of controls of which validation errors should be displayed. Names can be more concretized
+with the validation name eg. <code>name[required]</code>.</p>
+
+<pre>
+&lt;div validation-errors="name date" validation-controller="libAngularForm"&gt;&lt;/div&gt;
+</pre>
+
+<p>Please notice in the example above that it is sometimes necessary to combine <code>validation-errors</code> directive with the directive <code>validation-controller</code>. 
+It is necessary if you wish to insert validation errors outside the form. This is because on the page
+can be more forms and that the information to which <code>validation-errors</code> relies can be lost. Otherwise if scope of the form
+is not left then you can specify only the <code>validation-errors</code> directive.</p>
+
+<form class="form-horizontal" name="libAngularForm" validation-errors-location="explicit" validation-errors-mode="onInvalid" ui-validation>
+	<legend>Explicit error messages sample</legend>
+	
+	<div class="form-group">
+	  <label class="col-md-2 control-label" for="name3">Name</label>
+	  <div class="col-md-10 controls">
+	    <input ng-model="name3" required validate-length="5" name="name3" placeholder="Type name with at least 5 characters" class="form-control" type="text">
+	  </div>
+	</div>
+	
+	<div class="form-group">
+	  <label class="col-md-2 control-label" for="date3">Date of birth</label>
+	  <div class="col-md-10 controls">
+	    <input ng-model="date3" validate-regex="^([1-9]|[1|2][0-9]|[3][0|1])[.]([0]?[1-9]|[1][0-2])[.]([1-9][0-9]{3})$" name="date3" placeholder="Type date in format d.M.yyyy" class="form-control" type="text">
+	  </div>
+	</div>
+</form>
+
+<div class="row" ng-show="libAngularForm.name3.$error.required || libAngularForm.date3.$error.validateRegex">
+	<div class="col-md-2 text-right"><u><strong>Validation errors</strong></u></div>
+	<div class="col-md-10" validation-errors="name3 date3" validation-controller="libAngularForm">
+	</div>
+</div>
+
+<h2 id="oldWay">Standard way in AngularJS up to 1.3</h2>
+<p>
+The <a href="https://docs.angularjs.org/guide/forms#binding-to-form-and-control-state">standard way</a>
+ of displaying errors up to AngularJS 1.3 was to use conditional directives
+that checked whether <code>$error</code> object contains some specific validation error.</p>
+
+<pre>
+&lt;div&gt;
+    &lt;div ng-show="oldAngularForm.name.$error.required"&gt;Name is missing.&lt;/div&gt;
+    &lt;div ng-show="oldAngularForm.date.$error.validateRegex"&gt;Date of birth has invalid format.&lt;/div&gt;
+&lt;/div&gt;
+</pre>
+
+<p>This way is straightforward, but sometimes can be lousy to specify whole path to the <code>$error</code> again
+and again. Another disadvantage is impossibility to address all validation errors inside one control.</p>
+
+<form class="form-horizontal" name="oldAngularForm" validation-errors-location="explicit" ui-validation>
+	<legend>Simple sample</legend>
+	
+	<div class="form-group">
+	  <label class="col-md-2 control-label" for="name">Name</label>
+	  <div class="col-md-10 controls">
+	    <input ng-model="name" required name="name" placeholder="Type name" class="form-control" type="text">
+	  </div>
+	</div>
+	
+	<div class="form-group">
+	  <label class="col-md-2 control-label" for="date">Date of birth</label>
+	  <div class="col-md-10 controls">
+	    <input ng-model="date" validate-regex="^([1-9]|[1|2][0-9]|[3][0|1])[.]([0]?[1-9]|[1][0-2])[.]([1-9][0-9]{3})$" name="date" placeholder="Type date in format d.M.yyyy" class="form-control" type="text">
+	  </div>
+	</div>
+</form>
+
+<div class="row" ng-show="oldAngularForm.name.$error.required || oldAngularForm.date.$error.validateRegex">
+	<div class="col-md-2 text-right"><u><strong>Validation errors</strong></u></div>
+	<div class="col-md-10 alert alert-danger">
+	    <div ng-show="oldAngularForm.name.$error.required">Name is missing.</div>
+	    <div ng-show="oldAngularForm.date.$error.validateRegex">Date of birth has invalid format.</div>
+	</div>
+</div>
+
+<h2 id="newWay">Standard way in AngularJS 1.3 and higher</h2>
+<p>
+The <a href="https://docs.angularjs.org/api/ngMessages/directive/ngMessages">standard way</a>
+ of displaying errors in AngularJS 1.3 and higher is to use new directive <code>ngMessages</code> where should 
+ be placed path to the <code>$error</code> object of some control. Messages that should be displayed for control
+ with given <code>$error</code> object are then inserted into this by specifying specieal directives <code>ngMessage</code>.
+ This directive <code>ngMessage</code> takes only the name of the validation.</p>
+
+<pre>
+&lt;div&gt;
+	    &lt;div ng-messages="newAngularForm.name.$error"&gt;
+		    &lt;div ng-message="required"&gt;Name is missing.&lt;/div&gt;
+		    &lt;div ng-message="validateLength"&gt;Name is too short.&lt;/div&gt;
+		&lt;/div&gt;
+	    &lt;div ng-messages="newAngularForm.date.$error"&gt;
+	    	&lt;div ng-message="validateRegex"&gt;Date of birth has invalid format.&lt;/div&gt;
+	    &lt;/div&gt;
+&lt;/div&gt;
+</pre>
+
+<p>This way is again more less straightforward, has one big feature against the conditional way. If more validation errors
+happens for one control then it displays only the one. After one error disappears then it displays the another remaining
+error. One disadvantage could be that we have to still specify full path the <code>$error</code> object.
+Another disadvantage is that automatic connection to the resources with error messages is still missing.</p>
+
+<form class="form-horizontal" name="newAngularForm" validation-errors-location="explicit" ui-validation>
+	<legend>Simple sample</legend>
+	
+	<div class="form-group">
+	  <label class="col-md-2 control-label" for="name2">Name</label>
+	  <div class="col-md-10 controls">
+	    <input ng-model="name2" required validate-length="5" name="name2" placeholder="Type name with at least 5 characters" class="form-control" type="text">
+	  </div>
+	</div>
+	
+	<div class="form-group">
+	  <label class="col-md-2 control-label" for="date2">Date of birth</label>
+	  <div class="col-md-10 controls">
+	    <input ng-model="date2" validate-regex="^([1-9]|[1|2][0-9]|[3][0|1])[.]([0]?[1-9]|[1][0-2])[.]([1-9][0-9]{3})$" name="date2" placeholder="Type date in format d.M.yyyy" class="form-control" type="text">
+	  </div>
+	</div>
+</form>
+
+<div class="row" ng-show="newAngularForm.name2.$error.required || newAngularForm.date2.$error.validateRegex">
+	<div class="col-md-2 text-right"><u><strong>Validation errors</strong></u></div>
+	<div class="col-md-10 alert alert-danger">
+	    <div ng-messages="newAngularForm.name2.$error">
+		    <div ng-message="required">Name is missing.</div>
+		    <div ng-message="validateLength">Name is too short.</div>
+		</div>
+	    <div ng-messages="newAngularForm.date2.$error">
+	    	<div ng-message="validateRegex">Date of birth has invalid format.</div>
+	    </div>
+	</div>
+</div>
+</div>
+
+</body>
+</html>

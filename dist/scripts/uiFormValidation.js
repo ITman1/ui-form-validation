@@ -1,7 +1,7 @@
 /*!
  * ui-form-validation
  * https://github.com/ITman1/ui-form-validation
- * Version: v0.0.2 - 2014-11-02T19:10:43.208Z
+ * Version: v0.0.2 - 2014-12-13T20:37:26.784Z
  * License: MIT
  */
 
@@ -47,7 +47,12 @@ angular.module('uiFormValidation', [
   'uiFormValidation.directives',
   'uiFormValidation.providers',
   'ngSanitize'
-]);
+]).run(function (uiFormValidation, validationErrorMessagesService) {
+  angular.forEach(uiFormValidation.validationErrorMessagesFiles, function (file) {
+    validationErrorMessagesService.addValidationErrorMessages(file.locale, file.validationErrorMessagesName);
+  });
+  
+});
 
 /*
  * TODO: Refactor and make more services e.g. some registry for validation notice and errors + service 
@@ -267,6 +272,12 @@ angular.module('uiFormValidation.directives').directive('uiValidation', function
         
         if (!selectorErrorNames) {
           isInvalid = controlWrapper.control.$invalid;
+          
+          if (isInvalid === undefined) {
+            angular.forEach(controlWrapper.control.$error, function(errorName) {
+              isInvalid = true;
+            });
+          }
         } else {
           angular.forEach(selectorErrorNames, function(errorName) {
             if (controlWrapper.control.$error[errorName]) {
@@ -508,19 +519,33 @@ angular.module('uiFormValidation.directives').directive('validationError', funct
       require: 'validationError',
       controller: 'validationErrorsController',
       link: function(scope, element, attrs) {
-        var validationError = scope[attrs.validationError];
-        
-        var errorMessagesScope = $rootScope.$new(true);
-        angular.forEach(validationError.validationErrorContext, function (contextValue, contextKey) {
-          scope.$watch(function () {
-            return validationError.validationErrorContext[contextKey];
-          }, function (newValue) {
-            errorMessagesScope[contextKey] = newValue;
+        var compiledMessageElement = null;
+        var watchers = [];
+        scope.$watch(function () {
+          return scope[attrs.validationError];
+        }, function (validationError) {
+          angular.forEach(watchers, function (watcher) {
+            watcher();
           });
+          watchers = [];
+          
+          var errorMessagesScope = $rootScope.$new(true);
+          angular.forEach(validationError.validationErrorContext, function (contextValue, contextKey) {
+            watchers.push(scope.$watch(function () {
+              return validationError.validationErrorContext[contextKey];
+            }, function (newValue) {
+              errorMessagesScope[contextKey] = newValue;
+            }));
+          });
+          
+          
+          if (compiledMessageElement) {
+            compiledMessageElement.remove();
+          }
+          
+          compiledMessageElement = $compile(angular.element("<span>" + validationError.errorMessage + "</span>"))(errorMessagesScope);
+          element.append(compiledMessageElement);
         });
-        
-        var compiledMessageElement = $compile(angular.element("<span>" + validationError.errorMessage + "</span>"))(errorMessagesScope);
-        element.append(compiledMessageElement);
       }
     };
 });
@@ -530,7 +555,7 @@ angular.module('uiFormValidation.directives').directive('validationError', funct
  * Restrict: A
  */
 
-angular.module('uiFormValidation.directives').directive('validationErrors', function(utilsService, uiFormValidation, validationErrorMessagesService, $parse) {  
+angular.module('uiFormValidation.directives').directive('validationErrors', function($timeout, utilsService, uiFormValidation, validationErrorMessagesService, $parse) {  
     return {
       replace:true,
       restrict: 'A',
@@ -579,18 +604,23 @@ angular.module('uiFormValidation.directives').directive('validationErrors', func
               throw "Undefined control '" + watchedControl.controlName + '" to watch.';
             }
             
-            scope.$watchCollection(function () {              
-              return controlWrapper.control.$error;
-            }, function () {
-            
+            var refreshControlErrors = function () {
               if (watchedControl.errors && watchedControl.errors.length < 1) {
-                scope.errors = {};
                 return;
               }
               
               var controlErrors = validationErrorMessagesService.getControlErrors(scope, validationController, watchedControl, controlWrapper);             
+              
               scope.errors[watchedControl.controlName] = controlErrors;
-            });
+            };
+            
+            scope.$watchCollection(function () {              
+              return controlWrapper.control.$error;
+            }, refreshControlErrors);
+            
+            scope.$watch(function () {              
+              return validationErrorMessagesService.invalidatedDate;
+            }, refreshControlErrors);
           });
         });
       }
@@ -848,8 +878,17 @@ angular.module('uiFormValidation.providers').provider('uiFormValidation', functi
   
   this.supportedValidations = supportedValidations;
   
+  
+  this.validationErrorMessagesFiles = [];
+  this.addValidationErrorMessages = function (locale, validationErrorMessagesName) {
+    this.validationErrorMessagesFiles.push({
+      locale: locale,
+      validationErrorMessagesName: validationErrorMessagesName
+    });
+  };
+  
   function UIFormValidationProvider() {
-    this.customValidations = [];
+    this.validationErrorMessagesFiles = $this.validationErrorMessagesFiles;
   
     this.validationNoticeMode = $this.validationNoticeMode;
   
@@ -949,7 +988,7 @@ angular.module('uiFormValidation.services').service('utilsService', function () 
     var controlErrorsSelectors = {};
     
     angular.forEach(controlErrorsSelectorsString.split(/\s+/), function (controlAndError) {
-      var parseRegexp = /^\s*(.*?)\s*(\{\s*([^\{\}]*?)\s*\})?$/;
+      var parseRegexp = /^\s*(.*?)\s*(\[\s*([^\{\}]*?)\s*\])?$/;
       var match = parseRegexp.exec(controlAndError);
       if (match !== null && match.length === 4) {
         var controlName = match[1];
@@ -1007,19 +1046,32 @@ angular.module('uiFormValidation.services').service('utilsService', function () 
   };
 });
 
-angular.module('uiFormValidation.services').service('validationErrorMessagesService', function (uiFormValidation, validationErrorMessages, utilsService, $locale, $templateCache, $cacheFactory, $parse, $compile, $rootScope, $log) {
+angular.module('uiFormValidation.services').service('validationErrorMessagesService', function (uiFormValidation, validationErrorMessages, utilsService, $locale, $templateCache, $cacheFactory, $log, $http) {
   var $this = this;
   var validationErrorMessagesCache = $cacheFactory('validationErrorMessagesCache');
   
+  this.invalidatedDate = new Date();
+  
   this.invalidateCache = function (locale) {
-    if (locale && locale != 'DEFAULT') {
+    if (locale && locale != 'default') {
       validationErrorMessagesCache.remove(locale);
     } else {
       validationErrorMessagesCache.removeAll();
     }
+    
+    this.invalidatedDate = new Date();
   };
   
   this.addValidationErrorMessages = function (locale, validationErrorMessagesName, validationErrorMessages) {
+    if (!validationErrorMessages) {
+      $http.get(validationErrorMessagesName)
+      .then(function(res){
+         $this.addValidationErrorMessages(locale, validationErrorMessagesName, res.data);                
+       });
+      
+      return;
+    }
+    
     var localeValidationErrorMessages = this.getValidationErrorMessages(locale);
     
     if (!localeValidationErrorMessages) {
@@ -1085,7 +1137,7 @@ angular.module('uiFormValidation.services').service('validationErrorMessagesServ
   };
   
   this.getDefaultValidationErrorMessages = function () {
-    return this.getValidationErrorMessagesInstance('DEFAULT', validationErrorMessages.DEFAULT);
+    return this.getValidationErrorMessagesInstance('default', validationErrorMessages.DEFAULT);
   };
   
   this.getValidationErrorMessagesInstance = function (locale, validationErrorMessagesTemplateNames) {   
@@ -1098,16 +1150,23 @@ angular.module('uiFormValidation.services').service('validationErrorMessagesServ
         var validationErrorMessagesTemplate = $templateCache.get(validationErrorMessagesTemplateName);
         var validationErrorMessagesTemplateInstance = angular.fromJson(validationErrorMessagesTemplate);
         
-        angular.extend(validationErrorMessagesInstance, validationErrorMessagesTemplateInstance);
+        angular.forEach(validationErrorMessagesTemplateInstance, function (controllerMessages, controllerName) {
+          validationErrorMessagesInstance[controllerName] = validationErrorMessagesInstance[controllerName] || {};
+          angular.extend(validationErrorMessagesInstance[controllerName], controllerMessages);
+        });
+        
       });
       
       /* Put default validation message if there is no translation */
-      if (locale != 'DEFAULT') {
+      if (locale != 'default') {
         var defaultValidationErrorMessages = this.getDefaultValidationErrorMessages();
-        angular.forEach(defaultValidationErrorMessages, function (defaultValidationErrorMessage, key) {
-          if (!validationErrorMessagesInstance[key]) {
-            validationErrorMessagesInstance[key] = defaultValidationErrorMessage;
-          }
+        angular.forEach(defaultValidationErrorMessages, function (controllerMessages, controllerName) {
+          validationErrorMessagesInstance[controllerName] = validationErrorMessagesInstance[controllerName] || {};
+          angular.forEach(defaultValidationErrorMessages[controllerName], function (defaultValidationErrorMessage, key) {
+            if (!validationErrorMessagesInstance[controllerName][key]) {
+              validationErrorMessagesInstance[controllerName][key] = defaultValidationErrorMessage;
+            }
+          });
         });
       }
       
@@ -1156,10 +1215,10 @@ angular.module('uiFormValidation.services').service('validationErrorMessagesServ
               errorMessage = errorMessage(validationErrorContext);
             }
           } else {
-            errorMessage = validationErrorMessages[errorName];
+            errorMessage = $this.getValidationErrorMessage(validationErrorMessages, validationController.controllerName, errorName);
           }
         } else if (error) {
-          errorMessage = validationErrorMessages[errorName] || validationErrorMessages['__default__'];
+          errorMessage = $this.getValidationErrorMessage(validationErrorMessages, validationController.controllerName, errorName);
         };
         
         if (errorMessage) {
@@ -1178,6 +1237,15 @@ angular.module('uiFormValidation.services').service('validationErrorMessagesServ
     return controlErrors;
   };
   
+  this.getValidationErrorMessage = function (validationErrorMessages, controllerName, errorName) {
+    if (validationErrorMessages[controllerName] && validationErrorMessages[controllerName][errorName]) {
+      return validationErrorMessages[controllerName][errorName];
+    }
+    
+    return validationErrorMessages['*'][errorName] || validationErrorMessages['*']['*'];
+    
+  };
+  
 });
 
 angular.module('uiFormValidation.values').constant('validationErrorMessages', {
@@ -1192,10 +1260,10 @@ angular.module('uiFormValidation.values').value('validationErrorsLocationFactori
   explicit: 'uiFormValidation.validationErrorsLocation.explicit'
 });
 
-angular.module("uiFormValidation").run(["$templateCache", function($templateCache) {$templateCache.put("validation-errors-templates/default.html","<div class=\"alert alert-danger\">\r\n    <div ng-repeat=\"controlErrors in errors\">\r\n	    <div class=\"row\" ng-repeat=\"controlError in controlErrors.errors\">\r\n		    <span validation-error=\"controlError\"></span>\r\n	    </div>\r\n	</div>\r\n</div>");
-$templateCache.put("validation-errors/default.html","<div class=\"alert alert-danger\">\r\n    <div ng-repeat=\"controlErrors in errors\">\r\n	    <div class=\"row\" ng-repeat=\"controlError in controlErrors.errors\">\r\n		    <span ng-bind-html=\"controlError\"</span>\r\n	    </div>\r\n	</div>\r\n</div>");
-$templateCache.put("validation-error-messages/cs-CZ.messages","{\r\n	\"__default__\" : \"Validace {{validationName}} selhala.\",\r\n	\"required\" : \"Polo�ka je povinn�.\",\r\n	\"validateRequired\" : \"Polo�ka je povinn�.\",\r\n	\"validateLength\" : \"O�ek�v�n text alespo� o d�lce {{validationValue}} znak�, sou�asn� d�lka je {{controlValue ? controlValue.length : \'0\'}} znak�.\",\r\n	\"validateRegex\" : \"Hodnota nespl�uje po�adovan� regul�rn� v�raz: {{validationValue}}.\"\r\n}");
-$templateCache.put("validation-error-messages/en-US.messages","{\r\n	\"__default__\" : \"Validation {{validationName}} has failed.\",\r\n	\"required\" : \"Field is required.\",\r\n	\"validateRequired\" : \"Field is required.\",\r\n	\"validateLength\" : \"Expecting text with length at least {{validationValue}} characters, but length is {{controlValue ? controlValue.length : \'0\'}} characters.\",\r\n	\"validateRegex\" : \"Value does not matches regular expression {{validationValue}}.\"\r\n}\r\n");}]);
+angular.module("uiFormValidation").run(["$templateCache", function($templateCache) {$templateCache.put("validation-errors/default.html","<div class=\"alert alert-danger\">\r\n    <div ng-repeat=\"controlErrors in errors\">\r\n	    <div class=\"row\" ng-repeat=\"controlError in controlErrors.errors\">\r\n		    <span ng-bind-html=\"controlError\"</span>\r\n	    </div>\r\n	</div>\r\n</div>");
+$templateCache.put("validation-errors-templates/default.html","<div class=\"alert alert-danger\">\r\n    <div ng-repeat=\"controlErrors in errors\">\r\n	    <div class=\"row\" ng-repeat=\"controlError in controlErrors.errors\">\r\n		    <span validation-error=\"controlError\"></span>\r\n	    </div>\r\n	</div>\r\n</div>");
+$templateCache.put("validation-error-messages/cs-CZ.messages","{\r\n    \"*\": {\r\n        \"*\": \"Validace {{validationName}} selhala.\",\r\n        \"required\": \"Polo�ka je povinn�.\",\r\n        \"validateRequired\": \"Polo�ka je povinn�.\",\r\n        \"validateLength\": \"O�ek�v�n text alespo� o d�lce {{validationValue}} znak�, sou�asn� d�lka je {{controlValue ? controlValue.length : \'0\'}} znak�.\",\r\n        \"validateRegex\": \"Hodnota nespl�uje po�adovan� regul�rn� v�raz: {{validationValue}}.\"\r\n    }\r\n}");
+$templateCache.put("validation-error-messages/en-US.messages","{\r\n    \"*\": {\r\n        \"*\": \"Validation {{validationName}} has failed.\",\r\n        \"required\": \"Field is required.\",\r\n        \"validateRequired\": \"Field is required.\",\r\n        \"validateLength\": \"Expecting text with length at least {{validationValue}} characters, but length is {{controlValue ? controlValue.length : \'0\'}} characters.\",\r\n        \"validateRegex\": \"Value does not matches regular expression {{validationValue}}.\"\r\n    }\r\n}");}]);
 
 })(window, document);
 

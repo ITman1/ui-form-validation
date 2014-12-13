@@ -124,6 +124,12 @@ angular.module('uiFormValidation.directives').directive('uiValidation', function
         
         if (!selectorErrorNames) {
           isInvalid = controlWrapper.control.$invalid;
+          
+          if (isInvalid === undefined) {
+            angular.forEach(controlWrapper.control.$error, function(errorName) {
+              isInvalid = true;
+            });
+          }
         } else {
           angular.forEach(selectorErrorNames, function(errorName) {
             if (controlWrapper.control.$error[errorName]) {

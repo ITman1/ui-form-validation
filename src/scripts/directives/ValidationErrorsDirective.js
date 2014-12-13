@@ -5,7 +5,7 @@
  * Restrict: A
  */
 
-angular.module('uiFormValidation.directives').directive('validationErrors', function(utilsService, uiFormValidation, validationErrorMessagesService, $parse) {  
+angular.module('uiFormValidation.directives').directive('validationErrors', function($timeout, utilsService, uiFormValidation, validationErrorMessagesService, $parse) {  
     return {
       replace:true,
       restrict: 'A',
@@ -54,18 +54,23 @@ angular.module('uiFormValidation.directives').directive('validationErrors', func
               throw "Undefined control '" + watchedControl.controlName + '" to watch.';
             }
             
-            scope.$watchCollection(function () {              
-              return controlWrapper.control.$error;
-            }, function () {
-            
+            var refreshControlErrors = function () {
               if (watchedControl.errors && watchedControl.errors.length < 1) {
-                scope.errors = {};
                 return;
               }
               
               var controlErrors = validationErrorMessagesService.getControlErrors(scope, validationController, watchedControl, controlWrapper);             
+              
               scope.errors[watchedControl.controlName] = controlErrors;
-            });
+            };
+            
+            scope.$watchCollection(function () {              
+              return controlWrapper.control.$error;
+            }, refreshControlErrors);
+            
+            scope.$watch(function () {              
+              return validationErrorMessagesService.invalidatedDate;
+            }, refreshControlErrors);
           });
         });
       }

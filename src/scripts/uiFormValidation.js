@@ -39,7 +39,12 @@ angular.module('uiFormValidation', [
   'uiFormValidation.directives',
   'uiFormValidation.providers',
   'ngSanitize'
-]);
+]).run(function (uiFormValidation, validationErrorMessagesService) {
+  angular.forEach(uiFormValidation.validationErrorMessagesFiles, function (file) {
+    validationErrorMessagesService.addValidationErrorMessages(file.locale, file.validationErrorMessagesName);
+  });
+  
+});
 
 /*
  * TODO: Refactor and make more services e.g. some registry for validation notice and errors + service 

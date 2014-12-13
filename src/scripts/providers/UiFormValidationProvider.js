@@ -78,8 +78,17 @@ angular.module('uiFormValidation.providers').provider('uiFormValidation', functi
   
   this.supportedValidations = supportedValidations;
   
+  
+  this.validationErrorMessagesFiles = [];
+  this.addValidationErrorMessages = function (locale, validationErrorMessagesName) {
+    this.validationErrorMessagesFiles.push({
+      locale: locale,
+      validationErrorMessagesName: validationErrorMessagesName
+    });
+  };
+  
   function UIFormValidationProvider() {
-    this.customValidations = [];
+    this.validationErrorMessagesFiles = $this.validationErrorMessagesFiles;
   
     this.validationNoticeMode = $this.validationNoticeMode;
   

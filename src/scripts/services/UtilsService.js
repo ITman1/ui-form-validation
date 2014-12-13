@@ -78,7 +78,7 @@ angular.module('uiFormValidation.services').service('utilsService', function () 
     var controlErrorsSelectors = {};
     
     angular.forEach(controlErrorsSelectorsString.split(/\s+/), function (controlAndError) {
-      var parseRegexp = /^\s*(.*?)\s*(\{\s*([^\{\}]*?)\s*\})?$/;
+      var parseRegexp = /^\s*(.*?)\s*(\[\s*([^\{\}]*?)\s*\])?$/;
       var match = parseRegexp.exec(controlAndError);
       if (match !== null && match.length === 4) {
         var controlName = match[1];

@@ -1,7 +1,9 @@
 {
-	"__default__" : "Validation {{validationName}} has failed.",
-	"required" : "Field is required.",
-	"validateRequired" : "Field is required.",
-	"validateLength" : "Expecting text with length at least {{validationValue}} characters, but length is {{controlValue ? controlValue.length : '0'}} characters.",
-	"validateRegex" : "Value does not matches regular expression {{validationValue}}."
+    "*": {
+        "*": "Validation {{validationName}} has failed.",
+        "required": "Field is required.",
+        "validateRequired": "Field is required.",
+        "validateLength": "Expecting text with length at least {{validationValue}} characters, but length is {{controlValue ? controlValue.length : '0'}} characters.",
+        "validateRegex": "Value does not matches regular expression {{validationValue}}."
+    }
 }
