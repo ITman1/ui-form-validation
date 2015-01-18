@@ -5,6 +5,33 @@ AngularJS UI Form Validation (Bootstrap)
 
 **Status of project:** (in development)  
 
+## Installation
+#### Bower
+````
+bower install ui-form-validation
+````
+## Usage
+
+  - Include script location inside HTML:
+````
+<script src="bower_components/ui-form-validation/dist/scripts/uiFormValidation.min.js"></script>
+````
+  - Add the `uiFormValidation` module in your application: 
+````
+angular.module("myModule", ["uiFormValidation"]); 
+````
+
+## Demos
+  
+Library package contains some demos located on `examples`.
+  
+**List of demos:**
+
+&nbsp;&nbsp;&nbsp;[![Plunker](http://cdn.altrn.tv/icons/plunkr_29051.png?width=13&height=13)](http://plnkr.co/edit/ArMpukWIhDy0MEuNQA0p?p=preview) [`index.html`](http://plnkr.co/edit/ArMpukWIhDy0MEuNQA0p?p=preview) -- Simple form validation with the custom validation with corresponding validation message (Bootstrap)
+
+&nbsp;&nbsp;&nbsp;[![Plunker](http://cdn.altrn.tv/icons/plunkr_29051.png?width=13&height=13)](http://plnkr.co/edit/ArMpukWIhDy0MEuNQA0p?p=preview) [`validation-errors.html`](http://plnkr.co/edit/nVmFVDwGW44aV2xMoKsU?p=preview) -- Examples how to insert validation errors messages into pages using various locations 
+
+
 ## Library features
 
 #### Define custom form validations and use the existing one from AngularJS and HTML5
@@ -92,34 +119,6 @@ app.config(function(uiFormValidationProvider) {
 // Per whole form
 <form class="form-horizontal" name="libAngularForm" validation-notice-mode="onInvalid" ui-validation>
 ````
-## Installation
-#### Bower
-````
-bower install ui-form-validation
-````
-
-## Usage
-
-  - Include script location inside HTML:
-````
-<script src="bower_components/ui-form-validation/dist/scripts/uiFormValidation.min.js"></script>
-````
-  - Add the `uiFormValidation` module in your application: 
-````
-angular.module("myModule", ["uiFormValidation"]); 
-````
-
-## Demos
-  
-Library package contains some demos located on `examples`.
-  
-**List of demos:**
-
-&nbsp;&nbsp;&nbsp;[![Plunker](http://cdn.altrn.tv/icons/plunkr_29051.png?width=13&height=13)](http://plnkr.co/edit/ArMpukWIhDy0MEuNQA0p?p=preview) [`index.html`](http://plnkr.co/edit/ArMpukWIhDy0MEuNQA0p?p=preview) -- Simple form validation with the custom validation with corresponding validation message (Bootstrap)
-
-&nbsp;&nbsp;&nbsp;[![Plunker](http://cdn.altrn.tv/icons/plunkr_29051.png?width=13&height=13)](http://plnkr.co/edit/ArMpukWIhDy0MEuNQA0p?p=preview) [`validation-errors.html`](http://plnkr.co/edit/nVmFVDwGW44aV2xMoKsU?p=preview) -- Examples how to insert validation errors messages into pages using various locations 
-
-
 ## Contact and credits
                              
 **Author:**    Radim Loskot  
